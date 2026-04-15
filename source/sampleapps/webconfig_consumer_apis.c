@@ -1225,8 +1225,8 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
 
         // clearing the descriptor and raw json data
         data->descriptor =  0;
-        webconfig_data_free(data);
         printf("%s:%d start webconfig_encode num_of_radio:%d\n", __func__, __LINE__, data->u.decoded.num_radios);
+        webconfig_data_free(data);
         ret = webconfig_encode(&consumer->webconfig, data,
                 webconfig_subdoc_type_private);
         if (ret == webconfig_error_none)
