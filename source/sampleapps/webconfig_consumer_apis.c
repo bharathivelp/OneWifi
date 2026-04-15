@@ -1188,7 +1188,6 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
 {
     webconfig_subdoc_data_t *data = NULL;
     webconfig_error_t ret = webconfig_error_none;
-
     char *str;
 
     str = NULL;
@@ -1226,10 +1225,7 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
 
         // clearing the descriptor and raw json data
         data->descriptor =  0;
-        if (data->u.encoded.raw != NULL) {
-            free(data->u.encoded.raw);
-            data->u.encoded.raw = NULL;
-        }
+        webconfig_data_free(data);
         printf("%s:%d start webconfig_encode num_of_radio:%d\n", __func__, __LINE__, data->u.decoded.num_radios);
         ret = webconfig_encode(&consumer->webconfig, data,
                 webconfig_subdoc_type_private);
@@ -1238,9 +1234,7 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
     }
 
     if (str == NULL) {
-        free(data);
-        data = NULL;
-        return;
+        goto cleanup;
     }
 
     if (ret == webconfig_error_none) {
@@ -1257,8 +1251,8 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
-    free(str);
-    
+cleanup:
+    webconfig_data_free(data);
     free(data);
     data = NULL;
 }
