@@ -1166,11 +1166,15 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     wifi_mgmt_frame.frame.phy_rate = frame->phy_rate;
     wifi_mgmt_frame.frame.token = frame->token;
     wifi_mgmt_frame.frame.recv_freq = frame->recv_freq;
+    if (frame->len > MAX_FRAME_SZ) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Recived frame len: %d, more than allowed allocation\n", __func__, __LINE__, frame->len);
+        return RETURN_ERR;
+    }
     wifi_mgmt_frame.frame.len = frame->len;
     memcpy(wifi_mgmt_frame.data, frame->data, frame->len);
 
     //In side this API we have allocate memory and send it to control queue
-    push_event_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + frame->len), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
+    push_event_to_ctrl_queue(&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + frame->len), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
 
     return RETURN_OK;
 }
@@ -1311,6 +1315,16 @@ void get_gas_init_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *m
     pquery_len = (unsigned short*)((unsigned char *)&adv_proto_elem->proto_tuple + adv_proto_elem->len);
     query_len = *pquery_len;
     query_req = (unsigned char *)((unsigned char *)pquery_len + sizeof(unsigned short));
+    unsigned char *frame_end = frame + len;
+    if (query_req + query_len > frame_end) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Dropping GAS initial request frame (query_len=%u) exceeds frame length %u\n", __func__, __LINE__, query_len, len);
+        return;
+    }
+
+    if (query_len > MAX_FRAME_SZ) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Dropping GAS initial request frame (query_len=%u) MAX_FRAME_SZ=%u\n", __func__, __LINE__, query_len, MAX_FRAME_SZ);
+        return;
+    }
 
     switch (adv_tuple->adv_proto_id) {
 
