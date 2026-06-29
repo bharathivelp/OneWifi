@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <arpa/inet.h>
 #include "ieee80211.h"
 #include "misc.h"
 #ifdef CMWIFI_RDKB
@@ -1155,11 +1156,29 @@ int sta_connection_status(int apIndex, wifi_bss_info_t *bss_dev, wifi_station_st
 #ifdef WIFI_HAL_VERSION_3_PHASE2
 int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
 {
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
     frame_data_t wifi_mgmt_frame;
 
-    memset(&wifi_mgmt_frame, 0, sizeof(wifi_mgmt_frame));
+    if (frame == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received NULL frame pointer\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if ((frame->len > 0) && (frame->data == NULL)) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received non-zero length frame with NULL data pointer\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (frame->len > MAX_FRAME_SZ) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received frame len: %u exceeds MAX_FRAME_SZ (%u)\n",
+            __func__, __LINE__, frame->len, MAX_FRAME_SZ);
+        return RETURN_ERR;
+    }
+
+    memset(&wifi_mgmt_frame, 0, sizeof(frame_data_t));
     wifi_mgmt_frame.frame.ap_index = ap_index;
     memcpy(wifi_mgmt_frame.frame.sta_mac, frame->sta_mac, sizeof(mac_address_t));
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
     wifi_mgmt_frame.frame.type = frame->type;
     wifi_mgmt_frame.frame.dir = frame->dir; 
     wifi_mgmt_frame.frame.sig_dbm = frame->sig_dbm;
@@ -1167,11 +1186,17 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     wifi_mgmt_frame.frame.token = frame->token;
     wifi_mgmt_frame.frame.recv_freq = frame->recv_freq;
     wifi_mgmt_frame.frame.len = frame->len;
-    memcpy(wifi_mgmt_frame.data, frame->data, frame->len);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi enter\n", __func__, __LINE__);
+
+    if (frame->len > 0) {
+        memcpy(wifi_mgmt_frame.data, frame->data, frame->len);
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi Received frame len: %u\n", __func__, __LINE__, frame->len);
+    }
 
     //In side this API we have allocate memory and send it to control queue
-    push_event_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + frame->len), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
+    push_event_to_ctrl_queue(&wifi_mgmt_frame, sizeof(frame_data_t), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
 
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi exit\n", __func__, __LINE__);
     return RETURN_OK;
 }
 #else
@@ -1185,6 +1210,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
     frame_data_t mgmt_frame;
     wifi_event_subtype_t evt_subtype = wifi_event_hal_unknown_frame;
     wifi_monitor_data_t *data = NULL;
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
 
     if (len == 0) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d Recived zero length frame\n", __func__, __LINE__);
@@ -1201,6 +1227,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
     memcpy(mgmt_frame.frame.sta_mac, sta_mac, sizeof(mac_address_t));
     mgmt_frame.frame.type = type;
     mgmt_frame.frame.dir = dir;
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
 #if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_) || defined (_SCXF11BFL_PRODUCT_REQ_)
     mgmt_frame.frame.sig_dbm = sig_dbm;
     mgmt_frame.frame.phy_rate = phy_rate;
@@ -1210,27 +1237,34 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_probe_req_frame;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
     } else if (type == WIFI_MGMT_FRAME_TYPE_AUTH) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_auth_frame;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
     } else if (type == WIFI_MGMT_FRAME_TYPE_ASSOC_REQ) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_assoc_req_frame;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
     } else if (type == WIFI_MGMT_FRAME_TYPE_ASSOC_RSP) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_assoc_rsp_frame;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
     } else if (type == WIFI_MGMT_FRAME_TYPE_REASSOC_REQ) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_reassoc_req_frame;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
     } else if (type == WIFI_MGMT_FRAME_TYPE_REASSOC_RSP) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_reassoc_rsp_frame;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
     } else if (type == WIFI_MGMT_FRAME_TYPE_ACTION) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
         // Validate minimum ACTION frame length before proceeding
         if (len < sizeof(struct ieee80211_frame) + 1) {
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Dropping short ACTION frame (len=%u)\n", __func__, __LINE__, len);
@@ -1239,6 +1273,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
 
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
 
         data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
         if (data == NULL) {
@@ -1262,10 +1297,13 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         memcpy(&data->u.msg.data, frame, len);
 
         paction = (wifi_actionFrameHdr_t *)(frame + sizeof(struct ieee80211_frame));
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
         if (paction->cat == wifi_action_frame_wnm) {
             evt_subtype = wifi_event_hal_wnm_action_frame;
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
         } else {
             evt_subtype = wifi_event_hal_dpp_public_action_frame;
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
         }
 
         push_event_to_monitor_queue(data, wifi_event_monitor_action_frame, NULL);
@@ -1283,12 +1321,15 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_csa_beacon_frame;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry\n", __func__, __LINE__);
     }
     if (evt_subtype != wifi_event_hal_unknown_frame) {
         push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype, NULL);
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi exit\n", __func__, __LINE__);
     } else {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Unknown frame type received! skipped push_event_to_ctrl_queue, ap_index:%d, type:%d\n", __func__, __LINE__, ap_index, type);
     }
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi exit\n", __func__, __LINE__);
     return RETURN_OK;
 }
 #endif
@@ -1296,47 +1337,110 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
 
 void get_gas_init_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, wifi_event_subtype_t *evt_subtype)
 {
-    unsigned short query_len, *pquery_len;
-    unsigned char *query_req;
-    wifi_advertisementProtoElement_t *adv_proto_elem;
-    wifi_advertisementProtoTuple_t *adv_tuple;
-    const char dpp_oui[3] = {0x50, 0x6f, 0x9a};
-    wifi_gasInitialRequestFrame_t *pgas_req = (wifi_gasInitialRequestFrame_t *)frame;
+    unsigned short query_len = 0;
+    unsigned short raw_q_len = 0;
+    uint8_t *frame_end;
+    uint8_t *adv_elem_start;
+    uint8_t *tuple_start;
+    uint8_t *tuple_end;
+    uint8_t *query_req;
+    uint8_t adv_elem_len;
+    uint8_t adv_tuple_len;
+    uint8_t *oui;
+    const uint8_t dpp_oui[3] = {0x50, 0x6f, 0x9a};
 
-    adv_proto_elem = &pgas_req->proto_elem;
-    adv_tuple = &adv_proto_elem->proto_tuple;
-
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d: advertisement proto element id:%d length:%d\n", __func__, __LINE__, adv_proto_elem->id, adv_proto_elem->len);
-
-    pquery_len = (unsigned short*)((unsigned char *)&adv_proto_elem->proto_tuple + adv_proto_elem->len);
-    query_len = *pquery_len;
-    query_req = (unsigned char *)((unsigned char *)pquery_len + sizeof(unsigned short));
-
-    switch (adv_tuple->adv_proto_id) {
-
-        case wifi_adv_proto_id_vendor_specific:
-            if ((adv_tuple->len == sizeof(dpp_oui) + 2) && (memcmp(adv_tuple->oui, dpp_oui, sizeof(dpp_oui)) == 0) &&
-                    (*(adv_tuple->oui + sizeof(dpp_oui)) == DPP_OUI_TYPE) && (*(adv_tuple->oui + sizeof(dpp_oui) + 1) == DPP_CONFPROTO)) {
-                wifi_util_dbg_print(WIFI_CTRL,"%s:%d dpp gas initial req frame received callback, length:%d\n", __func__, __LINE__, query_len);
-                *evt_subtype = wifi_event_hal_dpp_config_req_frame;
-                memcpy(mgmt_frame->data, query_req, query_len);
-                mgmt_frame->frame.len = query_len;
-                mgmt_frame->frame.token = pgas_req->token;
-
-            }
-            break;
-
-        case wifi_adv_proto_id_anqp:
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d anqp gas initial req frame received call back, length:%d\n", __func__, __LINE__, query_len);
-            *evt_subtype = wifi_event_hal_anqp_gas_init_frame;
-            memcpy(mgmt_frame->data, query_req, query_len);
-            mgmt_frame->frame.len = query_len;
-            mgmt_frame->frame.token = pgas_req->token;
-            break;
-
-        default:
-            break;
+    if ((frame == NULL) || (mgmt_frame == NULL) || (evt_subtype == NULL)) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Invalid input parameter\n", __func__, __LINE__);
+        return;
     }
+
+    if (len == 0 || len > MAX_FRAME_SZ) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Invalid frame length %u\n", __func__, __LINE__, len);
+        return;
+    }
+
+    frame_end = frame + len;
+
+    if (frame + 3 > frame_end) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Frame too short for GAS header\n", __func__, __LINE__);
+        return;
+    }
+
+    adv_elem_start = frame + 1;
+    adv_elem_len = adv_elem_start[1];
+
+    if (adv_elem_len < 2 || 
+        adv_elem_start + 2 + adv_elem_len > frame_end) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Invalid advertisement protocol element length\n", __func__, __LINE__);
+        return;
+    }
+
+    tuple_start = adv_elem_start + 2;
+
+    if (tuple_start + 2 > frame_end) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Tuple header exceeds frame\n", __func__, __LINE__);
+        return;
+    }
+
+    adv_tuple_len = tuple_start[1];
+
+    if (adv_tuple_len > adv_elem_len - 2) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Tuple length exceeds element bounds\n", __func__, __LINE__);
+        return;
+    }
+
+    tuple_end = tuple_start + 2 + adv_tuple_len;
+
+    if (tuple_end > frame_end) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Tuple extends past frame end\n", __func__, __LINE__);
+        return;
+    }
+
+    if (tuple_end + sizeof(raw_q_len) > frame_end) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Query length field outside frame\n", __func__, __LINE__);
+        return;
+    }
+
+    memcpy(&raw_q_len, tuple_end, sizeof(raw_q_len));
+    query_len = ntohs(raw_q_len);
+    query_req = tuple_end + sizeof(raw_q_len);
+
+    if ((size_t)query_len > (size_t)(frame_end - query_req)) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Query length exceeds available frame data\n", __func__, __LINE__);
+        return;
+    }
+
+    if ((size_t)query_len > sizeof(mgmt_frame->data)) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Query too large (%u)\n", __func__, __LINE__, query_len);
+        return;
+    }
+
+    switch (tuple_start[0]) {
+        case wifi_adv_proto_id_vendor_specific:
+            if (adv_tuple_len != sizeof(dpp_oui) + 2) {
+                return;
+            }
+            oui = tuple_start + 2;
+            if (memcmp(oui, dpp_oui, sizeof(dpp_oui)) != 0 || 
+                oui[sizeof(dpp_oui)] != DPP_OUI_TYPE || 
+                oui[sizeof(dpp_oui) + 1] != DPP_CONFPROTO) {
+                return;
+            }
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d DPP GAS Initial Request received, length:%u\n", __func__, __LINE__, query_len);
+            *evt_subtype = wifi_event_hal_dpp_config_req_frame;
+            break;
+        case wifi_adv_proto_id_anqp:
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d ANQP GAS Initial Request received, length:%u\n", __func__, __LINE__, query_len);
+            *evt_subtype = wifi_event_hal_anqp_gas_init_frame;
+            break;
+        default:
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Unknown advertisement protocol ID: %u\n", __func__, __LINE__, tuple_start[0]);
+            return;
+    }
+
+    memcpy(mgmt_frame->data, query_req, query_len);
+    mgmt_frame->frame.len = query_len;
+    mgmt_frame->frame.token = frame[0];
 }
 
 void get_action_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, wifi_event_subtype_t *evt_subtype)
@@ -1396,6 +1500,8 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     unsigned int i;
     pthread_condattr_t cond_attr;
 
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entyry\n", __FUNCTION__, __LINE__);
+
     ctrl->db_consolidated = (0 == access("/tmp/db_consolidated", F_OK));
 
     //Initialize Webconfig Framework
@@ -1420,6 +1526,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     pthread_mutex_init(&ctrl->events_bus_data.events_bus_lock, NULL);
 
     ctrl->poll_period = QUEUE_WIFI_CTRL_TASK_TIMEOUT;
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi enter\n", __FUNCTION__, __LINE__);
 
     /*Intialize the scheduler*/
     ctrl->sched = scheduler_init();
@@ -1455,32 +1562,42 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
         svc_init(&ctrl->ctrl_svc[i], (vap_svc_type_t)i);
     }
 
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi exit\n", __FUNCTION__, __LINE__);
     //Register to BUS for webconfig interactions
     bus_register_handlers(ctrl);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi Registered to BUS for webconfig interactions\n", __FUNCTION__, __LINE__);
 
     // subscribe for BUS events
     bus_subscribe_events(ctrl);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi Subscribed to BUS events\n", __FUNCTION__, __LINE__);
 
     //Register wifi hal sta connect/disconnect callback
     wifi_hal_staConnectionStatus_callback_register(sta_connection_status);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi Registered wifi hal sta connect/disconnect callback\n", __FUNCTION__, __LINE__);
 
     //Register wifi hal scan results callback
     wifi_hal_scanResults_callback_register(scan_results_callback);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi Registered wifi hal scan results callback\n", __FUNCTION__, __LINE__);
 
     //Register wifi hal frame recv callback
     wifi_hal_mgmt_frame_callbacks_register(mgmt_wifi_frame_recv);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi Registered wifi hal frame recv callback\n", __FUNCTION__, __LINE__);
 
     /* Register wifi hal channel change events callback */
     wifi_chan_event_register(channel_change_callback);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi Registered wifi hal channel change events callback\n", __FUNCTION__, __LINE__);
 
     wifi_wpsEvent_callback_register(wps_event_callback);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi Registered wifi hal WPS event callback\n", __FUNCTION__, __LINE__);
 
     ctrl->bus_events_subscribed = false;
     ctrl->tunnel_events_subscribed = false;
 
 #if defined (FEATURE_SUPPORT_WEBCONFIG)
     register_with_webconfig_framework();
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d  bharathi Registered with webconfig framework\n", __FUNCTION__, __LINE__);
 #endif
+wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi exit\n", __FUNCTION__, __LINE__);
 
     return RETURN_OK;
 }
