@@ -827,6 +827,38 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
     return RETURN_OK;
 }
 
+static unsigned int get_monitor_data_size(wifi_event_subtype_t sub_type)
+{
+    switch (sub_type) {
+    case wifi_event_monitor_connect:
+    case wifi_event_monitor_disconnect:
+    case wifi_event_monitor_deauthenticate:
+        return offsetof(wifi_monitor_data_t, u) + sizeof(auth_deauth_dev_t);
+    case wifi_event_monitor_auth_req:
+    case wifi_event_monitor_assoc_req:
+    case wifi_event_monitor_reassoc_req: 
+    case wifi_event_monitor_action_frame:
+        return offsetof(wifi_monitor_data_t, u) + sizeof(frame_data_t);
+    case wifi_event_monitor_stats_flag_change:
+    case wifi_event_monitor_radio_stats_flag_change:
+    case wifi_event_monitor_vap_stats_flag_change:
+        return offsetof(wifi_monitor_data_t, u) + sizeof(client_stats_enable_t);
+    case wifi_event_monitor_clientdiag_update_config:
+    case wifi_event_monitor_clear_sta_counters:
+        return offsetof(wifi_monitor_data_t, u);
+    case wifi_event_monitor_data_collection_config:
+        return offsetof(wifi_monitor_data_t, u) + sizeof(wifi_mon_stats_config_t);
+    case wifi_event_monitor_set_subscribe:
+        return offsetof(wifi_monitor_data_t, u) + sizeof(collect_stats_t);
+    case wifi_event_monitor_channel_status:
+        return offsetof(wifi_monitor_data_t, u) + sizeof(wifi_channel_status_event_t);
+    case wifi_event_monitor_csi_pinger:
+        return offsetof(wifi_monitor_data_t, u) + sizeof(csi_mon_t);
+    default:
+        return sizeof(wifi_monitor_data_t);
+    }
+}
+
 int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtype_t sub_type,
     wifi_event_route_t *rt)
 {
@@ -846,13 +878,14 @@ int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtyp
         return RETURN_ERR;
     }
 
-    event = create_wifi_event(sizeof(wifi_monitor_data_t), wifi_event_type_monitor, sub_type);
+    unsigned int data_size = get_monitor_data_size(sub_type);
+    event = create_wifi_event(data_size, wifi_event_type_monitor, sub_type);
     if (event == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s %d data malloc null\n", __FUNCTION__, __LINE__);
         return RETURN_ERR;
     }
 
-    if (copy_msg_to_event(mon_data, sizeof(wifi_monitor_data_t), wifi_event_type_monitor, sub_type,
+    if (copy_msg_to_event(mon_data, data_size, wifi_event_type_monitor, sub_type,
             rt, event) != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL, "%s %d unable to copy msg to event for sub_type : %s\n",
             __FUNCTION__, __LINE__, wifi_event_subtype_to_string(sub_type));
