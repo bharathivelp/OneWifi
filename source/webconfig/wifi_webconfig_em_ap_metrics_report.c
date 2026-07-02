@@ -53,6 +53,8 @@ webconfig_error_t translate_from_em_ap_metrics_report_subdoc(webconfig_t *config
     if ((data->descriptor & webconfig_data_descriptor_translate_to_easymesh) == webconfig_data_descriptor_translate_to_easymesh) {
         if (config->proto_desc.translate_to(webconfig_subdoc_type_em_ap_metrics_report, data) != webconfig_error_none) {
             if ((data->descriptor & webconfig_error_translate_to_easymesh) == webconfig_error_translate_to_easymesh) {
+                free_em_ap_metrics_report(&data->u.decoded.em_ap_metrics_report);
+                memset(&data->u.decoded.em_ap_metrics_report, 0, sizeof(em_ap_metrics_report_t));
                 return webconfig_error_translate_to_easymesh;
             }
         }
@@ -61,7 +63,8 @@ webconfig_error_t translate_from_em_ap_metrics_report_subdoc(webconfig_t *config
     } else {
         // no translation required
     }
-    //no translation required
+    free_em_ap_metrics_report(&data->u.decoded.em_ap_metrics_report);
+    memset(&data->u.decoded.em_ap_metrics_report, 0, sizeof(em_ap_metrics_report_t));
     return webconfig_error_none;
 }
 
@@ -133,6 +136,16 @@ webconfig_error_t encode_em_ap_metrics_report_subdoc(webconfig_t *config, webcon
     return webconfig_error_none;
 }
 
+static void free_em_ap_metrics_report(em_ap_metrics_report_t *rep) {  
+    for (int r = 0; r < MAX_NUM_RADIOS; r++)
+        for (int v = 0; v < MAX_NUM_VAP_PER_RADIO; v++) {
+            free(rep->radio_reports[r].vap_reports[v].sta_traffic_stats);
+            rep->radio_reports[r].vap_reports[v].sta_traffic_stats = NULL;
+            free(rep->radio_reports[r].vap_reports[v].sta_link_metrics);
+            rep->radio_reports[r].vap_reports[v].sta_link_metrics = NULL;
+        }
+}
+
 webconfig_error_t decode_em_ap_metrics_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     webconfig_subdoc_decoded_data_t *params;
@@ -188,6 +201,7 @@ webconfig_error_t decode_em_ap_metrics_report_subdoc(webconfig_t *config, webcon
         if(decode_em_ap_metrics_report_object(em_ap_report_obj, &params->em_ap_metrics_report.radio_reports[i]) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decode_em_ap_metrics_report_object failed\n", __func__, __LINE__);
             cJSON_Delete(json);
+            free_em_ap_metrics_report(&params->em_ap_metrics_report);
             return webconfig_error_decode;
         }
     }

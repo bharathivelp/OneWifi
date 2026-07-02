@@ -2479,6 +2479,7 @@ static int refresh_task_period(void *arg)
         } else {
             if (g_monitor_module.client_telemetry_id != 0) {
                 scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.client_telemetry_id);
+                scheduler_free_timer_task_arg(g_monitor_module.sched, g_monitor_module.client_telemetry_id);
                 g_monitor_module.client_telemetry_id = 0;
             }
         }
@@ -4524,6 +4525,7 @@ static void update_interop_interval(void)
         wifi_util_dbg_print(WIFI_MON, "%s:%d new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
 	if((g_monitor_module.curr_chan_util_period != new_chan_util_period) && (new_chan_util_period != 0)) {
 	    if (g_monitor_module.interop_id != 0) {
+            scheduler_free_timer_task_arg(g_monitor_module.sched, g_monitor_module.interop_id);
 	        scheduler_update_timer_task_interval(g_monitor_module.sched, g_monitor_module.interop_id, new_chan_util_period*1000);
 	        g_monitor_module.curr_chan_util_period = new_chan_util_period;
 		wifi_util_dbg_print(WIFI_MON, "%s:%d updating new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
@@ -4555,10 +4557,12 @@ static void scheduler_telemetry_tasks(void)
     } else {
         if (g_monitor_module.refresh_task_id != 0) {
             scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.refresh_task_id);
+            scheduler_free_timer_task_arg(g_monitor_module.sched, g_monitor_module.refresh_task_id);
             g_monitor_module.refresh_task_id = 0;
         }
         if (g_monitor_module.client_telemetry_id != 0) {
             scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.client_telemetry_id);
+            scheduler_free_timer_task_arg(g_monitor_module.sched, g_monitor_module.client_telemetry_id);
             g_monitor_module.client_telemetry_id = 0;
         }
     }
@@ -5531,7 +5535,9 @@ int coordinator_stop_task(wifi_mon_collector_element_t **collector_elem, wifi_mo
         if (count == 0) {
             wifi_util_info_print(WIFI_MON, "%s:%d: Provider list is empty, remove collector task key : %s\n", __func__,__LINE__, (*collector_elem)->key);
             scheduler_cancel_timer_task(mon_data->sched, (*collector_elem)->collector_task_sched_id);
+            scheduler_free_timer_task_arg(mon_data->sched, (*collector_elem)->collector_task_sched_id);
             scheduler_cancel_timer_task(mon_data->sched, (*collector_elem)->collector_postpone_task_sched_id);
+            scheduler_free_timer_task_arg(mon_data->sched, (*collector_elem)->collector_postpone_task_sched_id);
             (*collector_elem)->collector_postpone_task_sched_id = 0;
             if ((*collector_elem)->stat_desc->stop_scheduler_tasks == NULL || (*collector_elem)->stat_desc->stop_scheduler_tasks((*collector_elem)) != RETURN_OK) {
                 wifi_util_error_print(WIFI_MON, "%s : %d Failed to stop task\n", __func__, __LINE__);
