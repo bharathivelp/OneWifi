@@ -370,7 +370,7 @@ wifi_app_descriptor_t app_desc[] = {
         NULL,NULL
     },
 #endif
-#if ONEWIFI_CSI_APP_SUPPORT
+#ifndef ONEWIFI_CSI_APP_SUPPORT
     {
         wifi_app_inst_csi, 0, 0,
         true, true,
@@ -379,7 +379,7 @@ wifi_app_descriptor_t app_desc[] = {
         NULL, NULL
     },
 #endif
-#if ONEWIFI_LEVL_APP_SUPPORT
+#ifndef ONEWIFI_LEVL_APP_SUPPORT
     {
         wifi_app_inst_levl, 0,
         wifi_event_type_hal_ind | wifi_event_type_webconfig | wifi_event_type_monitor | wifi_event_type_csi ,
@@ -399,7 +399,7 @@ wifi_app_descriptor_t app_desc[] = {
         NULL, NULL
     },
 #endif
-#if ONEWIFI_CSI_APP_SUPPORT
+#ifndef ONEWIFI_CSI_APP_SUPPORT
     {
         wifi_app_inst_csi_analytics, 0,
         wifi_event_type_webconfig,

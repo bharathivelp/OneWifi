@@ -1992,18 +1992,21 @@ static void config_rejected_client_stats(wifi_app_t *app)
 {
     wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_util_dbg_print(WIFI_APPS, " bharathi Entering %s:%d\n", __func__, __LINE__);
 
+    if (app->data.u.whix.vap_max_client_id != 0) {
+        scheduler_cancel_timer_task(ctrl->sched, app->data.u.whix.vap_max_client_id);
+        scheduler_free_timer_task_arg(ctrl->sched, app->data.u.whix.vap_max_client_id);
+        app->data.u.whix.vap_max_client_id = 0;
+    }   
     if ((global_param != NULL) && (global_param->whix_log_interval != 0)) {
-        if (app->data.u.whix.vap_max_client_id != 0) {
-            scheduler_cancel_timer_task(ctrl->sched, app->data.u.whix.vap_max_client_id);
-            app->data.u.whix.vap_max_client_id = 0;
-        }
         scheduler_add_timer_task(ctrl->sched, FALSE, &app->data.u.whix.vap_max_client_id,
             rejected_client_stats, NULL, (global_param->whix_log_interval * 1000), 0, 0);
     } else {
         scheduler_add_timer_task(ctrl->sched, FALSE, &app->data.u.whix.vap_max_client_id,
             rejected_client_stats, NULL, TELEMETRY_UPDATE_INTERVAL_MS, 0, 0);
     }
+    wifi_util_dbg_print(WIFI_APPS, "bharathi Exiting %s:%d\n", __func__, __LINE__);
 }
 
 static int push_whix_config_event_to_monitor_queue(wifi_mon_stats_request_state_t state,
@@ -2012,6 +2015,7 @@ static int push_whix_config_event_to_monitor_queue(wifi_mon_stats_request_state_
     // Send appropriate configs to monitor queue(stats, radio)
     wifi_monitor_data_t *data;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_util_dbg_print(WIFI_APPS, "bharathi Entering %s:%d\n", __func__, __LINE__);
 
     wifi_util_dbg_print(WIFI_APPS, "Entering %s\n", __func__);
     data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
@@ -2023,6 +2027,7 @@ static int push_whix_config_event_to_monitor_queue(wifi_mon_stats_request_state_
     if (app->data.u.whix.sched_handler_id != 0) {
         wifi_util_dbg_print(WIFI_APPS, "Cancelling scheduler\n");
         scheduler_cancel_timer_task(ctrl->sched, app->data.u.whix.sched_handler_id);
+        scheduler_free_timer_task_arg(ctrl->sched, app->data.u.whix.sched_handler_id);
         app->data.u.whix.sched_handler_id = 0;
         vap_iteration = 0;
         memset(vap_up_arr, 0, sizeof(vap_up_arr));
@@ -2051,6 +2056,7 @@ static int push_whix_config_event_to_monitor_queue(wifi_mon_stats_request_state_
         free(data);
         data = NULL;
     }
+    wifi_util_dbg_print(WIFI_APPS, "bharathi Exiting %s:%d\n", __func__, __LINE__);
 
     return RETURN_OK;
 }

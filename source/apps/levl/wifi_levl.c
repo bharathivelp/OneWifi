@@ -923,6 +923,7 @@ void levl_disassoc_device_event(wifi_app_t *apps, void *data)
         return;
     }
 
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d bharathi enter\n",__func__, __LINE__);
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *) data;
     levl_sched_data_t *levl_sc_data = NULL;
     levl_sched_data_t *p_sc_data = NULL;
@@ -967,6 +968,7 @@ void levl_disassoc_device_event(wifi_app_t *apps, void *data)
         //Cancel scheduler Task
         if (levl_sc_data->sched_handler_id != 0) {
             scheduler_cancel_timer_task(ctrl->sched, levl_sc_data->sched_handler_id);
+            scheduler_free_timer_task_arg(ctrl->sched, levl_sc_data->sched_handler_id);
             levl_sc_data->sched_handler_id = 0;
         }
         //Disable CSI Sounding
@@ -987,6 +989,7 @@ void levl_disassoc_device_event(wifi_app_t *apps, void *data)
         free(levl_sc_data);
     }
     return;
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d bharathi exit\n",__func__, __LINE__);
 }
 
 int levl_event_webconfig_set_data(wifi_app_t *apps, void *arg, wifi_event_subtype_t sub_type)
@@ -1139,6 +1142,7 @@ int process_csi_stop_levl(wifi_app_t *app)
     mac_addr_str_t mac_str = { 0 };
     levl_sched_data_t *tmp_data = NULL;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d bharathi enter\n", __func__, __LINE__);
     if (ctrl == NULL) {
         wifi_util_dbg_print(WIFI_APPS, "%s:%d NULL Pointer \n", __func__, __LINE__);
         return -1;
@@ -1163,6 +1167,7 @@ int process_csi_stop_levl(wifi_app_t *app)
         to_mac_str((unsigned char *)levl_sched_data->mac_addr, mac_str);
         if (levl_sched_data->sched_handler_id != 0) {
             scheduler_cancel_timer_task(ctrl->sched, levl_sched_data->sched_handler_id);
+            scheduler_free_timer_task_arg(ctrl->sched, levl_sched_data->sched_handler_id);
             levl_sched_data->sched_handler_id = 0;
         }
         csi_app->data.u.csi.csi_fns.csi_stop_fn(csi_app, levl_sched_data->ap_index, levl_sched_data->mac_addr, wifi_app_inst_levl);
@@ -1172,6 +1177,7 @@ int process_csi_stop_levl(wifi_app_t *app)
         hash_map_put(app->data.u.levl.pending_mac_map, strdup(mac_str), tmp_data);
     }
     return 0;
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d bharathi exit\n", __func__, __LINE__);
 }
 
 int process_csi_start_levl(wifi_app_t *app) 
@@ -1455,6 +1461,7 @@ int levl_deinit(wifi_app_t *app)
     void *tmp_data = NULL;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_util_info_print(WIFI_APPS, "%s:%d: Deinit Levl\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d: bharathi enter\n", __func__, __LINE__);
 
     if (ctrl == NULL) {
         wifi_util_dbg_print(WIFI_APPS, "%s:%d: NULL Pointer\n", __func__, __LINE__);
@@ -1467,6 +1474,7 @@ int levl_deinit(wifi_app_t *app)
     //Cancel scheduler Task
     if (app->data.u.levl.probe_collector_sched_handler_id != 0) {
         scheduler_cancel_timer_task(ctrl->sched, app->data.u.levl.probe_collector_sched_handler_id);
+        scheduler_free_timer_task_arg(ctrl->sched, app->data.u.levl.probe_collector_sched_handler_id);
         app->data.u.levl.probe_collector_sched_handler_id = 0;
     }
 
@@ -1495,6 +1503,8 @@ int levl_deinit(wifi_app_t *app)
         to_mac_str((unsigned char *)levl_sched_data->mac_addr, mac_str);
         if (levl_sched_data->sched_handler_id != 0) {
             scheduler_cancel_timer_task(ctrl->sched, levl_sched_data->sched_handler_id);
+            scheduler_free_timer_task_arg(ctrl->sched, levl_sched_data->sched_handler_id);
+            levl_sched_data->sched_handler_id = 0;
         }
         csi_app->data.u.csi.csi_fns.csi_stop_fn(csi_app, levl_sched_data->ap_index, levl_sched_data->mac_addr, wifi_app_inst_levl);
         levl_csi_status_publish(&app->handle, levl_sched_data->mac_addr, 0);
@@ -1554,6 +1564,7 @@ int levl_deinit(wifi_app_t *app)
         queue_destroy(app->queue);
     }
 
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d: bharathi exit\n", __func__, __LINE__);
     return RETURN_OK;
 }
 #endif

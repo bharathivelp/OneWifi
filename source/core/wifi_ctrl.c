@@ -1152,11 +1152,12 @@ int sta_connection_status(int apIndex, wifi_bss_info_t *bss_dev, wifi_station_st
     return RETURN_OK;
 }
 
-#ifdef WIFI_HAL_VERSION_3_PHASE2
+#ifndef WIFI_HAL_VERSION_3_PHASE2
 int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
 {
     frame_data_t wifi_mgmt_frame;
 
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d bharathi entered\n", __func__, __LINE__);
     memset(&wifi_mgmt_frame, 0, sizeof(wifi_mgmt_frame));
     wifi_mgmt_frame.frame.ap_index = ap_index;
     memcpy(wifi_mgmt_frame.frame.sta_mac, frame->sta_mac, sizeof(mac_address_t));
@@ -1168,10 +1169,14 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     wifi_mgmt_frame.frame.recv_freq = frame->recv_freq;
     wifi_mgmt_frame.frame.len = frame->len;
     memcpy(wifi_mgmt_frame.data, frame->data, frame->len);
+    if (frame->len > MAX_FRAME_SZ) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Recived frame len: %d, more than allowed allocation\n", __func__, __LINE__, frame->len);
+        return RETURN_ERR;
+    }
 
     //In side this API we have allocate memory and send it to control queue
-    push_event_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + frame->len), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
-
+    push_event_to_ctrl_queue(&wifi_mgmt_frame, sizeof(wifi_mgmt_frame), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d bharathi exit\n", __func__, __LINE__);
     return RETURN_OK;
 }
 #else
@@ -1298,6 +1303,7 @@ void get_gas_init_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *m
 {
     unsigned short query_len, *pquery_len;
     unsigned char *query_req;
+    unsigned char *frame_end = frame + len;
     wifi_advertisementProtoElement_t *adv_proto_elem;
     wifi_advertisementProtoTuple_t *adv_tuple;
     const char dpp_oui[3] = {0x50, 0x6f, 0x9a};
@@ -1308,9 +1314,34 @@ void get_gas_init_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *m
 
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d: advertisement proto element id:%d length:%d\n", __func__, __LINE__, adv_proto_elem->id, adv_proto_elem->len);
 
-    pquery_len = (unsigned short*)((unsigned char *)&adv_proto_elem->proto_tuple + adv_proto_elem->len);
-    query_len = *pquery_len;
-    query_req = (unsigned char *)((unsigned char *)pquery_len + sizeof(unsigned short));
+    unsigned char *proto_tuple_ptr;
+    size_t remaining_len;
+    proto_tuple_ptr = (unsigned char *)&adv_proto_elem->proto_tuple;
+    if (proto_tuple_ptr > frame_end) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: advertisement proto tuple pointer is beyond frame end\n", __func__, __LINE__);
+        return;
+    }
+
+    remaining_len = frame_end - proto_tuple_ptr;
+
+    if (remaining_len < adv_proto_elem->len + sizeof(query_len)) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: advertisement proto tuple length is invalid\n", __func__, __LINE__);
+        return;
+    }
+
+    pquery_len = (unsigned short *)(proto_tuple_ptr + adv_proto_elem->len);
+
+    memcpy(&query_len, pquery_len, sizeof(query_len));
+
+    if ((size_t)query_len > MAX_FRAME_SZ) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: query length is too large\n", __func__, __LINE__);
+        return;
+    }
+    query_req = (unsigned char *)pquery_len + sizeof(query_len);
+    if ((size_t)(frame_end - query_req) < (size_t)query_len) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: query request length is invalid\n", __func__, __LINE__);
+        return;
+    }
 
     switch (adv_tuple->adv_proto_id) {
 
