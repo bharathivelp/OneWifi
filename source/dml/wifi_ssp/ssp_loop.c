@@ -1166,6 +1166,7 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
     wifi_mac_psm_param_t *mac_psm_data = NULL;
     wifi_mac_psm_param_t *temp_mac_entry;
     char *mcfg_mac;
+    wifi_util_dbg_print(WIFI_PSM, "%s:%d bharathi entered\n", __func__, __LINE__);
 
     wifi_util_info_print(WIFI_PSM, "%s:%d update mac filter for vap index:%d\n", __func__, __LINE__,
         mcfg->vap_index);
@@ -1216,6 +1217,7 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
                     snprintf(temp_mac_entry->device_name, sizeof(temp_mac_entry->device_name), "%s", mcfg->device_name);
                 }
                 hash_map_put(psm_mac_map, mcfg_mac, temp_mac_entry);
+                mcfg_mac = NULL;
                 count = hash_map_count(psm_mac_map);
                 update_macfilter_list((mcfg->vap_index + 1), count, psm_mac_map);
             }
@@ -1257,6 +1259,7 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
         }
     }
 
+    wifi_util_dbg_print(WIFI_PSM, "%s:%d bharathi exit\n",__func__, __LINE__);
     wifi_util_info_print(WIFI_PSM, "%s:%d update mac filter done\n", __func__, __LINE__);
 }
 

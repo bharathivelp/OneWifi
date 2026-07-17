@@ -1450,10 +1450,17 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
     int vap_index = 0, radio_index = 0;
     wifi_platform_property_t *wifi_prop;
 
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi entered\n", __func__, __LINE__);
     webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
     if (params == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decoded_params is NULL\n", __func__, __LINE__);
         return webconfig_error_decode;
+    }
+
+    if (params->collect_stats.stats == NULL) {
+        wifi_util_info_print(WIFI_WEBCONFIG,
+            "%s:%d: no associated device stats to translate\n", __func__, __LINE__);
+        return webconfig_error_none;
     }
 
     assoc_device_stats = (wifi_provider_response_t **)&params->collect_stats.stats;
@@ -1510,6 +1517,7 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
             em_sta_dev_info->errors_tx                = client_stats[count].cli_ErrorsSent;
         }
     }
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi exit\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 
