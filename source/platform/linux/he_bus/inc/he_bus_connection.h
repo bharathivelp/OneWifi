@@ -38,6 +38,7 @@ extern "C" {
 
 #define HE_BUS_MSG_ADDR_MAX 128
 #define MSG_BUFF_SIZE 4096
+#define HE_BUS_MAX_MSG_LEN (4 * 1024 * 1024)
 #define SOCKET_INVALID_FD -1
 
 #define HE_BUS_ERROR_STREAM_CLOSED -1001

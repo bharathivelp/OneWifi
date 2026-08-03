@@ -199,6 +199,11 @@ static int recv_bus_scratch_data(he_bus_connection_info_t *client,
     } else {
         total_bytes_read = bytes_read;
         p_data = read_buffer;
+        if (bytes_read < (ssize_t)(2 * sizeof(uint32_t))) {
+            he_bus_conn_error_print("short header recv:%ld client identity:%s\r\n",
+                bytes_read, client->identity);
+            return HE_BUS_ERROR_MSG_VARIFICATION;
+        }
         uint32_t bus_msg_id = *(uint32_t *)p_data;
         he_bus_conn_info_print("%s:%d data recv:%ld client identity:%s bus_msg_id:%x:%x\r\n",
             __func__, __LINE__, bytes_read, client->identity, bus_msg_id,
@@ -210,10 +215,18 @@ static int recv_bus_scratch_data(he_bus_connection_info_t *client,
         } else {
             p_data += sizeof(uint32_t);
             total_recv_data_len = *(uint32_t *)p_data;
-            he_bus_conn_info_print("%s:%d total data needs to recv:%ld client identity:%s\r\n",
-                __func__, __LINE__, total_recv_data_len, client->identity);
+            if (total_recv_data_len < 2 * sizeof(uint32_t) ||
+                total_recv_data_len > HE_BUS_MAX_MSG_LEN) {
+                he_bus_conn_error_print("bogus msg len:%u from client:%s\r\n",
+                    total_recv_data_len, client->identity);
+                return HE_BUS_ERROR_MSG_VARIFICATION;
+            }
+            p_recv_data->buff = he_bus_try_malloc(total_recv_data_len);
+            if (p_recv_data->buff == NULL)
+                return HE_BUS_RETURN_ERR;
             p_recv_data->buff_len = total_recv_data_len;
-            p_recv_data->buff = he_bus_malloc(total_recv_data_len);
+            he_bus_conn_info_print("%s:%d total data needs to recv:%u client identity:%s\r\n",
+                __func__, __LINE__, total_recv_data_len, client->identity);
             if (bytes_read <= total_recv_data_len) {
                     memcpy(p_recv_data->buff, read_buffer, bytes_read);
                     p_data = p_recv_data->buff;
@@ -236,11 +249,15 @@ static int recv_bus_scratch_data(he_bus_connection_info_t *client,
             he_bus_conn_error_print(
                 "unix broadcast server recv failure:%d:%s, client identity:%s\r\n", errno,
                 strerror(errno), client->identity);
+            FREE_BUFF_MEMORY(p_recv_data->buff);
+            p_recv_data->buff_len = 0;
             return HE_BUS_RETURN_ERR;
         } else if (bytes_read == 0) {
             he_bus_conn_error_print(
                 "read zero bytes, broadcast stream closed: client identity:%s\r\n",
                 client->identity);
+            FREE_BUFF_MEMORY(p_recv_data->buff);
+            p_recv_data->buff_len = 0;
             return HE_BUS_ERROR_STREAM_CLOSED;
         } else {
             he_bus_conn_dbg_print("%s:%d rem data recv:%ld\r\n", __func__, __LINE__, bytes_read);

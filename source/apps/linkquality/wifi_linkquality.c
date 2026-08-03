@@ -353,10 +353,9 @@ int link_quality_param_reinit(wifi_app_t *apps, wifi_event_t *arg)
         return RETURN_ERR;
     }
 
-    server_arg_t *server_arg = (server_arg_t *)malloc(sizeof(server_arg_t));
-    memset(server_arg,0,sizeof(server_arg_t));
     switch (doc->type) {
-        case webconfig_subdoc_type_em_config:
+        case webconfig_subdoc_type_em_config: {
+            server_arg_t server_arg = {0};
             em_config = &decoded_params->em_config;
             if (em_config == NULL) {
                 wifi_util_error_print(WIFI_APPS, "%s:%d NULL pointer \n", __func__, __LINE__);
@@ -367,15 +366,15 @@ int link_quality_param_reinit(wifi_app_t *apps, wifi_event_t *arg)
                 __func__, __LINE__, em_config->alarm_report_policy.reporting_interval,
                 em_config->alarm_report_policy.link_quality_threshold);
             
-            server_arg->reporting = em_config->alarm_report_policy.reporting_interval;
-            server_arg->threshold = em_config->alarm_report_policy.link_quality_threshold;
+            server_arg.reporting = em_config->alarm_report_policy.reporting_interval;
+            server_arg.threshold = em_config->alarm_report_policy.link_quality_threshold;
 
             wifi_util_info_print(WIFI_APPS, "%s:%d reportingl as %d and threshold as %f\n",
-                __func__, __LINE__, server_arg->reporting, server_arg->threshold);
+                __func__, __LINE__, server_arg.reporting, server_arg.threshold);
 
-            reinit_link_metrics(server_arg);
-            free(server_arg);
+            reinit_link_metrics(&server_arg);
             break;
+        }
 
         default:
   

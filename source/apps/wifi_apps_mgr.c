@@ -230,6 +230,13 @@ int apps_mgr_cac_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wifi_e
     return RETURN_OK;
 }
 #endif
+/*
+ * Ownership contract:
+ * - arg is relinquished by caller and transferred to event->u.core_data.msg.
+ * - create_wifi_event(len, ...) may pre-allocate core_data.msg; that buffer must be released
+ *   before replacing msg with arg.
+ * - destroy_wifi_event() frees event->u.core_data.msg.
+ */
 int apps_mgr_link_quality_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wifi_event_subtype_t sub_type, void *arg, int len)
 {
     wifi_app_t  *app = NULL;
@@ -245,7 +252,8 @@ int apps_mgr_link_quality_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t typ
         event->u.core_data.msg = NULL;
         event->u.core_data.len = 0;
     } else {
-        /* copy msg to data */
+        /* Event takes ownership of arg; release pre-allocated msg buffer first. */
+        free(event->u.core_data.msg);
         event->u.core_data.msg  = arg;
         event->u.core_data.len = len;
         event->event_type = type;
