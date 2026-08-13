@@ -234,6 +234,7 @@ int apps_mgr_link_quality_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t typ
 {
     wifi_app_t  *app = NULL;
     wifi_event_t *event;
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d: bharathi Enter\n", __func__, __LINE__);
 
     event = (wifi_event_t *)create_wifi_event((len), type, sub_type);
     if (event == NULL) {
@@ -253,10 +254,16 @@ int apps_mgr_link_quality_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t typ
     }
 
     app = get_app_by_inst(apps_mgr, wifi_app_inst_link_quality);
+    if (app == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s %d assert - NULL pointer\n", __FUNCTION__, __LINE__);
+        destroy_wifi_event(event);
+        return RETURN_ERR;
+    }
 
     app->desc.event_fn(app, event);
 
     destroy_wifi_event(event);
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d: bharathi Exit\n", __func__, __LINE__);
 
     return RETURN_OK;
 }

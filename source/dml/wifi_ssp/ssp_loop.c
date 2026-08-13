@@ -1166,6 +1166,7 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
     wifi_mac_psm_param_t *mac_psm_data = NULL;
     wifi_mac_psm_param_t *temp_mac_entry;
     char *mcfg_mac;
+    wifi_util_dbg_print(WIFI_PSM, "%s:%d bharathi entered\n", __func__, __LINE__);
 
     wifi_util_info_print(WIFI_PSM, "%s:%d update mac filter for vap index:%d\n", __func__, __LINE__,
         mcfg->vap_index);
@@ -1200,14 +1201,16 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
                 if (strlen(mcfg->device_name) != 0) {
                     snprintf(temp_mac_entry->device_name, sizeof(temp_mac_entry->device_name), "%s", mcfg->device_name);
                 }
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d mac entry already present\r\n",__func__, __LINE__);
+                wifi_util_dbg_print(WIFI_PSM, "%s:%d bharathi mac entry already present\r\n",__func__, __LINE__);
+                free(mcfg_mac);
                 return;
             }
             ret = set_psm_record_by_name((mcfg->vap_index + 1), (mac_psm_data->data_index + 1), MacFilter, mcfg->mac);
             if (ret == RETURN_OK) {
                 temp_mac_entry = malloc(sizeof(wifi_mac_psm_param_t));
                 if (temp_mac_entry == NULL) {
-                    wifi_util_dbg_print(WIFI_PSM, "%s:%d malloc failure\r\n",__func__, __LINE__);
+                    wifi_util_dbg_print(WIFI_PSM, "%s:%d bharathi malloc failure\r\n",__func__, __LINE__);
+                    free(mcfg_mac);
                     return;
                 }
                 temp_mac_entry->data_index = (mac_psm_data->data_index + 1);
@@ -1215,7 +1218,12 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
                 if (strlen(mcfg->device_name) != 0) {
                     snprintf(temp_mac_entry->device_name, sizeof(temp_mac_entry->device_name), "%s", mcfg->device_name);
                 }
-                hash_map_put(psm_mac_map, mcfg_mac, temp_mac_entry);
+                if (hash_map_put(psm_mac_map, mcfg_mac, temp_mac_entry) != 0)
+                {
+                    wifi_util_error_print(WIFI_PSM, "%s:%d bharathi hash_map_put failed for mac filter entry\r\n", __func__, __LINE__);
+                    return;
+                }
+                mcfg_mac = NULL;
                 count = hash_map_count(psm_mac_map);
                 update_macfilter_list((mcfg->vap_index + 1), count, psm_mac_map);
             }
@@ -1250,13 +1258,17 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
                 if (strlen(mcfg->device_name) != 0) {
                     snprintf(temp_mac_entry->device_name, sizeof(temp_mac_entry->device_name), "%s", mcfg->device_name);
                 }
-                hash_map_put(psm_mac_map, strdup(mcfg->mac), temp_mac_entry);
+                if (hash_map_put(psm_mac_map, strdup(mcfg->mac), temp_mac_entry) != 0) {
+                    wifi_util_error_print(WIFI_PSM, "%s:%d bharathi hash_map_put failed for mac filter entry\r\n", __func__, __LINE__);
+                    return;
+                }
                 count = hash_map_count(psm_mac_map);
                 update_macfilter_list( (mcfg->vap_index + 1), count, psm_mac_map);
             }
         }
     }
 
+    wifi_util_dbg_print(WIFI_PSM, "%s:%d bharathi exit\n", __func__, __LINE__);
     wifi_util_info_print(WIFI_PSM, "%s:%d update mac filter done\n", __func__, __LINE__);
 }
 
