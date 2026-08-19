@@ -3217,8 +3217,14 @@ bus_error_t eventSubHandler(char *eventName, bus_event_sub_action_t action,
         case wifi_event_monitor_connect:
         case wifi_event_monitor_disconnect:
         case wifi_event_monitor_deauthenticate:
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi size of struct wifi_event_t=%zu\n", __func__, __LINE__, sizeof(wifi_event_t));
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi sizeof(wifi_event_monitor_connect)=%zu sizeof(auth_deauth_dev_t)=%zu payload=(offsetof(u)+auth_deauth_dev_t)=%zu\n",
+            __func__, __LINE__, sizeof(wifi_event_monitor_connect), sizeof(auth_deauth_dev_t),
+            offsetof(wifi_monitor_data_t, u) + sizeof(auth_deauth_dev_t));
             idx = event->idx;
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi event_type=%d idx=%d\n", __func__, __LINE__, event->type, idx);
             if (event->type == wifi_event_monitor_connect) {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi event_type=wifi_event_monitor_connect and size of\n", __func__, __LINE__);
                 telemetry_start = "WiFi_deviceConnected_SubscriptionStarted";
                 telemetry_cancel = "WiFi_deviceConnected_SubscriptionCancelled";
             } else if (event->type == wifi_event_monitor_disconnect) {
@@ -3615,6 +3621,7 @@ bus_error_t ap_table_addrowhandler(char const *tableName, char const *aliasName,
         sprintf(event->name, "Device.WiFi.AccessPoint.%d.X_RDK_deviceConnected", *instNum);
         event->idx = vap_index;
         event->type = wifi_event_monitor_connect;
+        wifi_util_dbg_print(WIFI_CTRL, "%s: %d bharathi size of wifi_event_monitor_connect EventName is %s\n", __func__, sizeof(wifi_event_monitor_connect), event->name);
         event->subscribed = FALSE;
         event->num_subscribers = 0;
         queue_push(ctrl->events_bus_data.events_bus_queue, event);
@@ -3962,7 +3969,11 @@ int events_bus_publish(wifi_event_t *evt)
     case wifi_event_monitor_connect:
     case wifi_event_monitor_disconnect:
     case wifi_event_monitor_deauthenticate:
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi sizeof(wifi_event_monitor_connect)=%zu\n",
+            __func__, __LINE__, sizeof(wifi_event_monitor_connect));
         if (evt->sub_type == wifi_event_monitor_connect) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi sizeof(wifi_event_monitor_connect)=%zu\n",
+                __func__, __LINE__, sizeof(wifi_event_monitor_connect));
             sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_deviceConnected",
                 evt->u.mon_data->ap_index + 1);
         } else if (evt->sub_type == wifi_event_monitor_disconnect) {

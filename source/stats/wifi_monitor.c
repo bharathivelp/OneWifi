@@ -558,6 +558,7 @@ int set_auth_req_frame_data(frame_data_t *msg) {
     int ipstat,sta_map_count;
     bool ipenable;
     frame = (struct ieee80211_mgmt *)msg->data;
+    wifi_util_dbg_print(WIFI_MON, "%s:%d bharathi size of frame_data_t:%zu\n", __func__, __LINE__, sizeof(frame_data_t));
 	 wifi_radioTrafficStats2_t chan_stats;
     if (frame == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d frame details are null \r\n", __func__, __LINE__);
@@ -1335,6 +1336,7 @@ static void
 process_stats_flag_changed(unsigned int ap_index, client_stats_enable_t *flag)
 {
     wifi_mgr_t *mgr = get_wifimgr_obj();
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: bharathi size of frame_data_t:%zu\n", __func__, __LINE__, sizeof(frame_data_t));  
 
     //Device.WiFi.X_RDKCENTRAL-COM_vAPStatsEnable = 0
     if (0 == flag->type) {
@@ -1365,6 +1367,7 @@ static void
 radio_stats_flag_changed(unsigned int radio_index, client_stats_enable_t *flag)
 {
     wifi_mgr_t *mgr = get_wifimgr_obj();
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: bharathi size of frame_data_t:%zu\n", __func__, __LINE__, sizeof(frame_data_t));
     for(UINT apIndex = 0; apIndex < getTotalNumberVAPs(); apIndex++)
     {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, apIndex);
@@ -1386,6 +1389,7 @@ vap_stats_flag_changed(unsigned int ap_index, client_stats_enable_t *flag)
 {
     //Device.WiFi.SSID.<vAP>.Enable = 0
     reset_client_stats_info(ap_index);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: bharathi size of frame_data_t:%zu\n", __func__, __LINE__, sizeof(frame_data_t));
     write_to_file(wifi_health_log, "WIFI_VAP_STATUS_ENABLE_%d:%s\n", ap_index+1,
             (flag->enable) ? "true" : "false");
 }
@@ -1660,6 +1664,7 @@ int set_assoc_req_frame_data(frame_data_t *msg)
     time_t frame_timestamp;
 
     frame = (struct ieee80211_mgmt *)msg->data;
+    wifi_util_dbg_print(WIFI_MON,"%s:%d bharathi size of frame_data_t:%zu\n", __func__, __LINE__, sizeof(frame_data_t));
     str = to_mac_str(frame->sa, mac_str);
     if (str == NULL) {
         wifi_util_error_print(WIFI_MON,"%s:%d mac str convert failure\r\n", __func__, __LINE__);
@@ -1696,6 +1701,7 @@ int set_assoc_req_frame_data(frame_data_t *msg)
 int set_reassoc_req_frame_data(frame_data_t *msg)
 {
    interop_reassoc_frame_data(msg);
+   wifi_util_dbg_print(WIFI_MON,"%s:%d bharathi size of frame_data_t:%zu\n", __func__, __LINE__, sizeof(frame_data_t));
    return RETURN_OK;
 
 }
@@ -1913,6 +1919,7 @@ void process_deauthenticate	(unsigned int ap_index, auth_deauth_dev_t *dev)
     char tmp[128];
     sta_key_t sta_key;
     wifi_util_info_print(WIFI_MON, "%s:%d Device:%s deauthenticated on ap:%d with reason : %d\n", __func__, __LINE__, to_sta_key(dev->sta_mac, sta_key), ap_index, dev->reason);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d bharathi size of auth_deauth_dev_t:%zu\n", __func__, __LINE__, sizeof(auth_deauth_dev_t));
     /*Wrong password on private, Xfinity Home and LNF SSIDs*/
     if ((dev->reason == 2) && ( isVapPrivate(ap_index) || isVapXhs(ap_index) || isVapLnfPsk(ap_index) ) ) {
         get_formatted_time(tmp);
@@ -2053,6 +2060,8 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
 
     wifi_util_info_print(WIFI_MON, "%s:%d process_connect start ap_index %d mld sta: %d\n",
         __func__, __LINE__, ap_index, dev->mld_info.cli_MLDSta);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d bharathi sizeof(auth_deauth_dev_t)=%zu\n", __func__, __LINE__,
+        sizeof(auth_deauth_dev_t));
 
     pthread_mutex_lock(&g_monitor_module.data_lock);
     process_connect_remove_duplicates(ap_index, dev);
@@ -2147,6 +2156,8 @@ void process_disconnect(unsigned int ap_index, auth_deauth_dev_t *dev)
     instant_msmt_t msmt;
     unsigned int vap_array_index;
     getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d bharathisizeof(auth_deauth_dev_t)=%zu\n", __func__, __LINE__,
+        sizeof(auth_deauth_dev_t));
     pthread_mutex_lock(&g_monitor_module.data_lock);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     wifi_util_info_print(WIFI_MON, "Device:%s disconnected on ap:%d\n",
@@ -4565,6 +4576,7 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
 
     memcpy(&data->u.dev.dev_stats, &assoc_data.dev_stats, sizeof(wifi_associated_dev3_t));
     push_event_to_monitor_queue(data, wifi_event_monitor_connect, NULL);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: bharathi size of wifi_event_monitor_connect=%zu\n", __func__, __LINE__, sizeof(wifi_event_monitor_connect));
 
     free(data);
     data = NULL;

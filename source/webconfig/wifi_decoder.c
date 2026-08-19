@@ -6000,6 +6000,7 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
     const cJSON *param;
     int size = 0;
     wifi_associated_dev3_t *client_stats_data = NULL;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi entering decode_assocdev_stats_object\n", __func__, __LINE__);
 
     if (json == NULL || assoc_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: cjson || assoc_stats is NULL\n", __func__, __LINE__);
@@ -6033,7 +6034,7 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
         free(*assoc_stats);
         *assoc_stats = NULL;
         wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Associated Device stats array size is %d\n",
-            __func__, __LINE__, (*assoc_stats)->stat_array_size);
+            __func__, __LINE__, size);
         return webconfig_error_none;
     } else {
         client_stats_data = (wifi_associated_dev3_t *)malloc(sizeof(wifi_associated_dev3_t) * size);
@@ -6171,6 +6172,7 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
     (*assoc_stats)->stat_pointer = client_stats_data;
     (*assoc_stats)->stat_array_size = size;
 
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi exiting decode_assocdev_stats_object\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 
