@@ -303,6 +303,8 @@ int clone_wifi_event(wifi_event_t *event, wifi_event_t **clone)
 wifi_event_t *create_wifi_event(unsigned int msg_len, wifi_event_type_t type,
     wifi_event_subtype_t sub_type)
 {
+    wifi_util_dbg_print(WIFI_CTRL, "%s %d: bharathi type: %s sub_type: %s\n", __FUNCTION__, __LINE__,
+        wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type)); 
     wifi_event_t *event;
     if (type >= wifi_event_type_max) {
         wifi_util_error_print(WIFI_CTRL, "%s %d Invalid event type %d\n", __FUNCTION__, __LINE__,
@@ -602,6 +604,8 @@ int copy_msg_to_event(const void *data, unsigned int msg_len, wifi_event_type_t 
             __FUNCTION__, __LINE__, data, event);
         return RETURN_ERR;
     }
+    wifi_util_dbg_print(WIFI_CTRL, "%s %d: bharathi type: %s sub_type: %s\n", __FUNCTION__, __LINE__,
+        wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
     switch (type) {
     case wifi_event_type_exec:
     case wifi_event_type_webconfig:
@@ -838,6 +842,8 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
 int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtype_t sub_type,
     wifi_event_route_t *rt)
 {
+    wifi_util_dbg_print(WIFI_CTRL, "%s %d: bharathi subtype: %s\n", __FUNCTION__, __LINE__,
+        wifi_event_subtype_to_string(sub_type));
     wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
     wifi_event_t *event;
     bool is_limit_reached;
@@ -855,6 +861,10 @@ int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtyp
     }
 
     event = create_wifi_event(sizeof(wifi_monitor_data_t), wifi_event_type_monitor, sub_type);
+    wifi_util_dbg_print(WIFI_CTRL, "%s %d: bharathi event: %p\n", __FUNCTION__, __LINE__,
+        event);
+    wifi_util_dbg_print(WIFI_CTRL, "%s %d: bharathi size of mon_data: %zu\n", __FUNCTION__, __LINE__,
+        sizeof(wifi_monitor_data_t));
     if (event == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s %d data malloc null\n", __FUNCTION__, __LINE__);
         return RETURN_ERR;
@@ -882,6 +892,7 @@ int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtyp
         destroy_wifi_event(event);
         return RETURN_ERR;
     }
+    wifi_util_dbg_print(WIFI_CTRL, "%s %d: bharathi etxit\n", __FUNCTION__, __LINE__);
 
     return RETURN_OK;
 }

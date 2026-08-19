@@ -558,6 +558,7 @@ int set_auth_req_frame_data(frame_data_t *msg) {
     int ipstat,sta_map_count;
     bool ipenable;
     frame = (struct ieee80211_mgmt *)msg->data;
+    wifi_util_dbg_print(WIFI_MON, "%s:%d bharathi size of frame_data_t: %zu\n", __func__, __LINE__, sizeof(frame_data_t));
 	 wifi_radioTrafficStats2_t chan_stats;
     if (frame == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d frame details are null \r\n", __func__, __LINE__);
@@ -1660,6 +1661,7 @@ int set_assoc_req_frame_data(frame_data_t *msg)
     time_t frame_timestamp;
 
     frame = (struct ieee80211_mgmt *)msg->data;
+    wifi_util_dbg_print(WIFI_MON,"%s:%d bharathi size of frame_data_t: %zu\n", __func__, __LINE__, sizeof(frame_data_t));
     str = to_mac_str(frame->sa, mac_str);
     if (str == NULL) {
         wifi_util_error_print(WIFI_MON,"%s:%d mac str convert failure\r\n", __func__, __LINE__);
@@ -1912,6 +1914,7 @@ void process_deauthenticate	(unsigned int ap_index, auth_deauth_dev_t *dev)
     char buff[2048];
     char tmp[128];
     sta_key_t sta_key;
+    wifi_util_dbg_print(WIFI_MON, "%s:%d bharathi size of auth_deauth_dev_t: %zu\n", __func__, __LINE__, sizeof(auth_deauth_dev_t));
     wifi_util_info_print(WIFI_MON, "%s:%d Device:%s deauthenticated on ap:%d with reason : %d\n", __func__, __LINE__, to_sta_key(dev->sta_mac, sta_key), ap_index, dev->reason);
     /*Wrong password on private, Xfinity Home and LNF SSIDs*/
     if ((dev->reason == 2) && ( isVapPrivate(ap_index) || isVapXhs(ap_index) || isVapLnfPsk(ap_index) ) ) {
@@ -2054,6 +2057,8 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
     wifi_util_info_print(WIFI_MON, "%s:%d process_connect start ap_index %d mld sta: %d\n",
         __func__, __LINE__, ap_index, dev->mld_info.cli_MLDSta);
 
+    wifi_util_dbg_print(WIFI_MON, "%s:%d bharathi size of dev: %zu\n", __func__, __LINE__, sizeof(auth_deauth_dev_t));
+
     pthread_mutex_lock(&g_monitor_module.data_lock);
     process_connect_remove_duplicates(ap_index, dev);
     if (dev->mld_info.cli_MLDSta == true) {
@@ -2152,6 +2157,7 @@ void process_disconnect(unsigned int ap_index, auth_deauth_dev_t *dev)
     wifi_util_info_print(WIFI_MON, "Device:%s disconnected on ap:%d\n",
         to_sta_key(dev->sta_mac, sta_key), ap_index);
     str_tolower(sta_key);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d bharathi size of auth_deauth_dev_t: %zu\n", __func__, __LINE__, sizeof(auth_deauth_dev_t));
     sta = (sta_data_t *)hash_map_get(sta_map, sta_key);
     if (sta == NULL) {
         wifi_util_info_print(WIFI_MON, "Device:%s could not be found on sta map of ap:%d\n",
