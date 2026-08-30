@@ -702,6 +702,21 @@ long long int get_current_time_in_sec(void)
     return (long long int)tv_now.tv_sec;
 }
 
+bool wifi_util_is_dbg_enabled(wifi_dbg_type_t module)
+{
+    char path[64];
+
+    switch (module) {
+    case WIFI_WEBCONFIG:
+        snprintf(path, sizeof(path), LOG_PATH_PREFIX "wifiWebConfigDbg");
+        break;
+    default:
+        return true;
+    }
+
+    return (access(path, R_OK) == 0);
+}
+
 char *get_formatted_time(char *time)
 {
     struct tm *tm_info;
