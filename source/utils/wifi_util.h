@@ -129,6 +129,7 @@ typedef enum {
 } wifi_log_level_t;
 
 void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, const char *format, ...);
+bool wifi_util_webconfig_is_dbg_enabled(void);
 
 #define wifi_util_dbg_print(module, format, ...) \
     wifi_util_print(WIFI_LOG_LVL_DEBUG, module, format, ##__VA_ARGS__)

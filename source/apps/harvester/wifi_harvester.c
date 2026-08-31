@@ -603,6 +603,7 @@ void upload_single_client_msmt_data(sta_data_t *sta_info)
 
 void process_instant_msmt_monitor(wifi_provider_response_t *provider_response)
 {
+    wifi_util_dbg_print(WIFI_HARVESTER, "%s:%d: bharathi Entering\n", __func__, __LINE__);
     if (g_harvester_module.count >= g_harvester_module.maxCount) {
         wifi_util_dbg_print(WIFI_HARVESTER, "%s:%d: instant polling freq reached threshold\n", __func__, __LINE__);
         g_harvester_module.instantDefOverrideTTL = DEFAULT_INSTANT_REPORT_TIME;
@@ -613,8 +614,12 @@ void process_instant_msmt_monitor(wifi_provider_response_t *provider_response)
             for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
                 g_harvester_module.radio_data[radio_index] = (radio_data_t *) malloc (sizeof(radio_data_t));
                 if (g_harvester_module.radio_data[radio_index] == NULL) {
-                    wifi_util_error_print(WIFI_HARVESTER, "%s:%d: Unable to allocate memory \n", __func__, __LINE__);
-                    return;
+                    g_harvester_module.radio_data[radio_index] = (radio_data_t *) malloc (sizeof(radio_data_t));
+                    if (g_harvester_module.radio_data[radio_index] == NULL)
+                    {
+                        wifi_util_error_print(WIFI_HARVESTER, "%s:%d: Unable to allocate memory \n", __func__, __LINE__);
+                        return;
+                    }
                 }
                 memset(g_harvester_module.radio_data[radio_index], 0, sizeof(radio_data_t));
                 if (get_dev_stats_for_radio(radio_index, (radio_data_t *)g_harvester_module.radio_data[radio_index]) != RETURN_OK) {
@@ -650,6 +655,7 @@ void process_instant_msmt_monitor(wifi_provider_response_t *provider_response)
             }
         }
     }
+    wifi_util_dbg_print(WIFI_HARVESTER, "%s:%d: bharathi Exiting\n", __func__, __LINE__);
 }
 
 void process_instant_msmt_stop()

@@ -224,6 +224,8 @@ void telemetry_event_akm_count(telemetry_data_t *sta1,int vapindex, char *mac);
 void deinit_wifi_monitor(void);
 void SetBlasterMqttTopic(char *mqtt_topic);
 int update_interop_sta_data(unsigned int vap_index);
+static void free_provider_list(wifi_mon_collector_element_t *coll_elem);
+
 static inline char *to_sta_key    (mac_addr_t mac, sta_key_t key) 
 {
     snprintf(key, STA_KEY_LEN, "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -5436,12 +5438,15 @@ void coordinator_free_collector_elem(wifi_mon_collector_element_t **collector_el
 
 int coordinator_create_task(wifi_mon_collector_element_t **collector_elem, wifi_mon_stats_config_t *stats_config, wifi_mon_stats_descriptor_t *stat_desc)
 {
+    wifi_monitor_t *mon_data = NULL;
     if (collector_elem == NULL || stats_config == NULL || stat_desc == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: Null pointer\n", __func__,__LINE__);
         return RETURN_ERR;
     }
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: bharathi entered\n", __func__,__LINE__);
 
     wifi_mon_provider_element_t *provider_elem = NULL;
+    mon_data = (wifi_monitor_t *)get_wifi_monitor();
     *collector_elem = coordinator_create_collector_elem(stats_config, stat_desc);
     if (*collector_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_collector_elem failed\n", __func__,__LINE__);
@@ -5450,27 +5455,25 @@ int coordinator_create_task(wifi_mon_collector_element_t **collector_elem, wifi_
 
     if (coordinator_create_collector_task(*collector_elem) != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_collector_task failed\n", __func__,__LINE__);
-        coordinator_free_collector_elem(collector_elem);
-        return RETURN_ERR;
+        goto fail;
     }
 
     (*collector_elem)->provider_list = hash_map_create();
     if ((*collector_elem)->provider_list == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: hash map failed for provider list\n", __func__,__LINE__);
-        coordinator_free_collector_elem(collector_elem);
-        return RETURN_ERR;
+        goto fail;
     }
 
     provider_elem = coordinator_create_provider_elem(stats_config, stat_desc);
     if (provider_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_provider_elem failed\n", __func__,__LINE__);
-        return RETURN_ERR;
+        goto fail;
     }
     char* key_copy = strdup(provider_elem->key);
     if (key_copy == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: strdup failed\n", __func__,__LINE__);
         coordinator_free_provider_elem(&provider_elem);
-        return RETURN_ERR;
+        goto fail;
     }
 
     if (hash_map_put((*collector_elem)->provider_list, key_copy, provider_elem) != 0) {
@@ -5482,14 +5485,24 @@ int coordinator_create_task(wifi_mon_collector_element_t **collector_elem, wifi_
     if (stat_desc->copy_stats_from_cache != NULL) {
         if (coordinator_create_provider_task(provider_elem) != RETURN_OK) {
             wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_provider_task failed\n", __func__,__LINE__);
-            coordinator_free_provider_elem(&provider_elem);
-            return RETURN_ERR;
+            goto fail;
         }
     } else {
         provider_elem->provider_task_sched_id = 0;
     }
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: bharathi exit\n", __func__,__LINE__);
 
     return RETURN_OK;
+
+fail:
+    if (mon_data != NULL && *collector_elem != NULL && (*collector_elem)->collector_task_sched_id != 0) {
+        scheduler_cancel_timer_task(mon_data->sched, (*collector_elem)->collector_task_sched_id);
+    }
+    if (*collector_elem != NULL) {
+        free_provider_list(*collector_elem);
+        coordinator_free_collector_elem(collector_elem);
+    }
+    return RETURN_ERR;
 }
 
 int collector_task_update(wifi_mon_collector_element_t *collector_elem, unsigned long *new_collector_interval)
@@ -5522,6 +5535,7 @@ int provider_task_update(wifi_mon_provider_element_t *provider_elem, unsigned lo
 
 int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_mon_stats_config_t *stats_config)
 {
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: bharathi Entered\n", __func__,__LINE__);
     if (collector_elem == NULL || collector_elem->stat_desc == NULL || collector_elem->provider_list == NULL || stats_config == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: Null pointer\n", __func__,__LINE__);
         return RETURN_ERR;
@@ -5559,6 +5573,7 @@ int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_m
         if (collector_elem->stat_desc->copy_stats_from_cache != NULL) {
             if (coordinator_create_provider_task(provider_elem) != RETURN_OK) {
                 wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_provider_task failed\n", __func__,__LINE__);
+                hash_map_remove(collector_elem->provider_list, provider_elem->key);
                 coordinator_free_provider_elem(&provider_elem);
                 return RETURN_ERR;
             }
@@ -5569,6 +5584,7 @@ int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_m
         coordinator_free_provider_elem(&dup_provider_elem);
     }
 
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: bharathi Exit\n", __func__,__LINE__);
     collector_task_update(collector_elem, &new_collector_interval);
     return RETURN_OK;
 }
@@ -5637,6 +5653,7 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
     wifi_mon_stats_descriptor_t *stat_desc = NULL;
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     clctr_subscription_t *clctr_subscription;
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: bharathi entered \n", __func__,__LINE__);
 
     if (stats_common_args_validation(mon_stats_config) != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s:%d: common args validation failed. stats_type %d  interval_ms %d from app %d\n", __func__,__LINE__,
@@ -5669,17 +5686,18 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
     collector_elem = (wifi_mon_collector_element_t *)hash_map_get(collector_list, stats_key);
     if (collector_elem == NULL) {
         if (mon_stats_config->req_state == mon_stats_request_state_start) {
+            char *key_copy = strdup(stats_key);
+            if (key_copy == NULL) {
+                wifi_util_error_print(WIFI_MON, "%s:%d: Failed to duplicate key\n", __func__,
+                    __LINE__);
+                return RETURN_ERR;
+            }
             if (coordinator_create_task(&collector_elem, mon_stats_config, stat_desc) !=
                 RETURN_OK) {
                 wifi_util_error_print(WIFI_MON,
                     "%s:%d: create task failed for key : %s for app  %d\n", __func__, __LINE__,
                     stats_key, mon_stats_config->inst);
-                return RETURN_ERR;
-            }
-            char *key_copy = strdup(stats_key);
-            if (key_copy == NULL) {
-                wifi_util_error_print(WIFI_MON, "%s:%d: Failed to duplicate key\n", __func__,
-                    __LINE__);
+                free(key_copy);
                 return RETURN_ERR;
             }
             clctr_subscription = hash_map_get(mon_data->clctr_subscriber_map, stats_key);
@@ -5694,7 +5712,12 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
                     __func__, __LINE__, stats_key, collector_elem->stats_clctr.is_event_subscribed,
                     mon_stats_config->data_type, collector_elem->stats_clctr.stats_type_subscribed);
             }
-            hash_map_put(collector_list, key_copy, collector_elem);
+            if (hash_map_put(collector_list, key_copy, collector_elem) != 0) {
+                wifi_util_error_print(WIFI_MON, "%s:%d: failed to add collector key : %s\n",
+                    __func__, __LINE__, stats_key);
+                /* hash_map_put takes ownership of key_copy and collector_elem on failure. */
+                return RETURN_ERR;
+            }
             wifi_util_info_print(WIFI_MON, "%s:%d: created task for key : %s for app  %d\n",
                 __func__, __LINE__, stats_key, mon_stats_config->inst);
         } else {
@@ -5716,7 +5739,7 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
             wifi_util_dbg_print(WIFI_MON, "%s:%d: stopped the task for key : %s for app  %d\n", __func__,__LINE__, stats_key, mon_stats_config->inst);
         }
     }
-
+wifi_util_dbg_print(WIFI_MON, "%s:%d: bharathi exit \n", __func__,__LINE__);
     return RETURN_OK;
 }
 
@@ -5732,7 +5755,7 @@ hash_map_t *coordinator_get_collector_list()
     return apps_coordinator->collector_list;
 }
 
-void free_provider_list(wifi_mon_collector_element_t *coll_elem)
+static void free_provider_list(wifi_mon_collector_element_t *coll_elem)
 {
     wifi_mon_provider_element_t *provider_elem, *temp_provider;
     char key[MON_STATS_KEY_LEN_32] = {0};

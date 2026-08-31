@@ -229,6 +229,7 @@ int sm_neighbor_sample_store(unsigned int radio_index, survey_type_t survey_type
 
 void sm_neighbor_cache_clean(sm_neighbor_cache_t *cache, survey_type_t survey_type)
 {
+    wifi_util_dbg_print(WIFI_SM, "%s:%d: bharathi enetered\n", __func__, __LINE__);
     sm_neighbor_t *tmp_neighbor = NULL;
     sm_neighbor_t *neighbor = NULL;
 
@@ -241,7 +242,14 @@ void sm_neighbor_cache_clean(sm_neighbor_cache_t *cache, survey_type_t survey_ty
         tmp_neighbor = neighbor;
         neighbor = hash_map_get_next(cache->neighbors, neighbor);
         neighbor_clean(cache, tmp_neighbor, survey_type);
+        if (ds_dlist_is_empty(&tmp_neighbor->onchan.samples) &&
+            ds_dlist_is_empty(&tmp_neighbor->offchan.samples) &&
+            tmp_neighbor->onchan.old_stats == NULL &&
+            tmp_neighbor->offchan.old_stats == NULL) {
+            neighbor_free(cache, tmp_neighbor);
+        }
     }
+    wifi_util_dbg_print(WIFI_SM, "%s:%d: bharathi exit\n", __func__, __LINE__);
 }
 
 

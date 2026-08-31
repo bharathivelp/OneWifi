@@ -326,6 +326,7 @@ int link_quality_ignite_reinit_param(wifi_app_t *apps, wifi_event_t *arg)
 }
 int link_quality_param_reinit(wifi_app_t *apps, wifi_event_t *arg)
 {
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d bharathi entered\n", __func__, __LINE__);
 
 #ifdef EM_APP
     if (!arg) {
@@ -335,15 +336,11 @@ int link_quality_param_reinit(wifi_app_t *apps, wifi_event_t *arg)
 
     //linkquality_data_t *data = (linkquality_data_t *)arg;
 
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d bharathi calling webconfig data\n", __func__, __LINE__);
     em_config_t *em_config;
     wifi_event_t *event = NULL;
     webconfig_subdoc_decoded_data_t *decoded_params = NULL;
     webconfig_subdoc_data_t *doc;
-
-    if (!arg) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d NULL Pointer\n", __func__, __LINE__);
-        return -1;
-    }
 
     event = arg;
     doc = (webconfig_subdoc_data_t *)event->u.webconfig_data;
@@ -353,16 +350,14 @@ int link_quality_param_reinit(wifi_app_t *apps, wifi_event_t *arg)
         return RETURN_ERR;
     }
 
-    server_arg_t *server_arg = (server_arg_t *)malloc(sizeof(server_arg_t));
-    memset(server_arg,0,sizeof(server_arg_t));
     switch (doc->type) {
         case webconfig_subdoc_type_em_config:
             em_config = &decoded_params->em_config;
-            if (em_config == NULL) {
-                wifi_util_error_print(WIFI_APPS, "%s:%d NULL pointer \n", __func__, __LINE__);
+            server_arg_t *server_arg = (server_arg_t *)calloc(1, sizeof(server_arg_t));
+            if (server_arg == NULL) {
+                wifi_util_error_print(WIFI_APPS, "%s:%d Failed to allocate server_arg\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
-
             wifi_util_info_print(WIFI_APPS, "%s:%d Received config Interval as %d and threshold as %f\n",
                 __func__, __LINE__, em_config->alarm_report_policy.reporting_interval,
                 em_config->alarm_report_policy.link_quality_threshold);
@@ -381,6 +376,7 @@ int link_quality_param_reinit(wifi_app_t *apps, wifi_event_t *arg)
   
             break;
     }
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d bharathi exit\n", __func__, __LINE__);
 #endif
     return RETURN_OK;
 }

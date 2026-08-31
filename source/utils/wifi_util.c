@@ -717,6 +717,18 @@ char *get_formatted_time(char *time)
     return time;
 }
 
+bool wifi_util_webconfig_is_dbg_enabled(void)
+{
+    char path[64];
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi entered\n", __func__, __LINE__);
+
+    snprintf(path, sizeof(path), LOG_PATH_PREFIX "wifiWebConfigDbg");
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi path=%s\n", __func__, __LINE__, path);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi exited\n", __func__, __LINE__);
+
+    return (access(path, R_OK) == 0);
+}
+
 void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, const char *format, ...)
 {
     char buff[256] = { 0 };
