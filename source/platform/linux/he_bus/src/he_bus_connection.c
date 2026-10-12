@@ -208,25 +208,44 @@ static int recv_bus_scratch_data(he_bus_connection_info_t *client,
             he_bus_conn_error_print("bus msg verification falied for client identity:%s\r\n",
                 client->identity);
             return HE_BUS_ERROR_MSG_VARIFICATION;
+        }
+
+        if (bytes_read < (ssize_t)(sizeof(uint32_t) * 2)) {
+            he_bus_conn_error_print("short bus message header from client identity:%s\r\n",
+                client->identity);
+            return HE_BUS_ERROR_MSG_VARIFICATION;
+        }
+
+        p_data += sizeof(uint32_t);
+        total_recv_data_len = *(uint32_t *)p_data;
+        if (total_recv_data_len == 0 || total_recv_data_len > (1024U * 1024U)) {
+            he_bus_conn_error_print("invalid bus msg length:%u from client identity:%s\r\n",
+                total_recv_data_len, client->identity);
+            return HE_BUS_ERROR_MSG_VARIFICATION;
+        }
+
+        he_bus_conn_info_print("%s:%d total data needs to recv:%u client identity:%s\r\n",
+            __func__, __LINE__, total_recv_data_len, client->identity);
+        p_recv_data->buff_len = total_recv_data_len;
+        p_recv_data->buff = he_bus_try_malloc(total_recv_data_len);
+        if (p_recv_data->buff == NULL) {
+            he_bus_conn_error_print("failed to allocate %u bytes for bus msg, client identity:%s\r\n",
+                total_recv_data_len, client->identity);
+            p_recv_data->buff_len = 0;
+            return HE_BUS_RETURN_ERR;
+        }
+
+        if (bytes_read <= total_recv_data_len) {
+            memcpy(p_recv_data->buff, read_buffer, bytes_read);
+            p_data = p_recv_data->buff;
+            p_data += bytes_read;
         } else {
-            p_data += sizeof(uint32_t);
-            total_recv_data_len = *(uint32_t *)p_data;
-            he_bus_conn_info_print("%s:%d total data needs to recv:%ld client identity:%s\r\n",
-                __func__, __LINE__, total_recv_data_len, client->identity);
-            p_recv_data->buff_len = total_recv_data_len;
-            p_recv_data->buff = he_bus_malloc(total_recv_data_len);
-            if (bytes_read <= total_recv_data_len) {
-                    memcpy(p_recv_data->buff, read_buffer, bytes_read);
-                    p_data = p_recv_data->buff;
-                    p_data += bytes_read;
-            } else {
-                    memcpy(p_recv_data->buff, read_buffer, total_recv_data_len);
-                    p_data = p_recv_data->buff;
-                    p_data += total_recv_data_len;
-                    he_bus_conn_info_print("%s:%d recv more data (%d) than needs recv (%d)"
-                                ". ignoring %d bytes", __func__, __LINE__, bytes_read,
-                                total_recv_data_len, bytes_read - total_recv_data_len);
-            }
+            memcpy(p_recv_data->buff, read_buffer, total_recv_data_len);
+            p_data = p_recv_data->buff;
+            p_data += total_recv_data_len;
+            he_bus_conn_info_print("%s:%d recv more data (%d) than needs recv (%d)"
+                        ". ignoring %d bytes", __func__, __LINE__, bytes_read,
+                        total_recv_data_len, bytes_read - total_recv_data_len);
         }
     }
 
