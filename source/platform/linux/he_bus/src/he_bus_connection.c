@@ -71,9 +71,9 @@ int bus_server_bind_listener(char const *socket_name, he_bus_listener *pListener
         return ret;
     }
 
-    if (chmod(socket_name, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) < 0) {
+    if (chmod(socket_name, S_IRUSR | S_IWUSR) < 0) {
         he_bus_conn_error_print(
-            "Failed to change socket's:%s write permission for non-root listener\r\n", socket_name);
+            "Failed to make listener socket accessible to non-root users:%s\r\n", socket_name);
     }
 
     ret = listen(listener.fd, 32);
