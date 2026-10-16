@@ -4926,7 +4926,7 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     }
 
     frame = &assoc_data.sta_data.msg_data;
-    if (frame->frame.len != 0) {
+    if (frame->frame.len >= ASSOC_REQ_MAC_HEADER_LEN) {
         parse_assoc_ies((uint8_t *)(frame->data + ASSOC_REQ_MAC_HEADER_LEN),
             (size_t)(frame->frame.len - ASSOC_REQ_MAC_HEADER_LEN), &assoc_data);
     }
