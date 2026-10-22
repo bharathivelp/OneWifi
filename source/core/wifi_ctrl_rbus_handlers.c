@@ -2548,6 +2548,7 @@ static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_d
     unsigned int len = 0;
     frame_data_t frame_data;
     memset(&frame_data, 0, sizeof(frame_data));
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry event_name:%s\n", __func__, __LINE__, event_name);
 
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Recvd Event\n", __func__, __LINE__);
 
@@ -2561,6 +2562,30 @@ static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_d
     data_ptr = (frame_data_t *)p_data->value.raw_data.bytes;
 
     if (data_ptr != NULL && len != 0) {
+        size_t frame_hdr_len = sizeof(frame_data_t) - MAX_FRAME_SZ;
+        size_t payload_len;
+
+        if (len < frame_hdr_len) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d invalid frame blob len:%u\n",
+                __func__, __LINE__, len);
+            return;
+        }
+
+        if (data_ptr->frame.len > MAX_FRAME_SZ) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d frame.len too large:%u\n",
+                __func__, __LINE__, data_ptr->frame.len);
+            return;
+        }
+
+        payload_len = len - frame_hdr_len;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bharathi entry payload_len:%zu\n", __func__, __LINE__, payload_len);
+        if ((size_t)data_ptr->frame.len > payload_len) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d frame.len:%u exceeds payload:%zu\n",
+                __func__, __LINE__, data_ptr->frame.len, payload_len);
+            return;
+        }
+
         memcpy((uint8_t *)&frame_data.frame.sta_mac, (uint8_t *)&data_ptr->frame.sta_mac,
             sizeof(mac_address_t));
         frame_data.frame.ap_index = data_ptr->frame.ap_index;
@@ -2579,6 +2604,7 @@ static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_d
             "%s:%d: frame_data.type:%d frame_data.dir:%d frame_data.sig_dbm:%d phy_rate:%d\r\n",
             __func__, __LINE__, frame_data.frame.type, frame_data.frame.dir,
             frame_data.frame.sig_dbm, frame_data.frame.phy_rate);
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bharathi exit\r\n", __func__, __LINE__);
 #ifdef WIFI_HAL_VERSION_3_PHASE2
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, &frame_data.frame);
 #else

@@ -107,21 +107,36 @@ uint32_t convert_he_bus_raw_data_to_buffer(he_bus_raw_data_t *p_data, uint8_t *p
     return l_data_len;
 }
 
-uint32_t convert_buffer_to_raw_data(uint8_t *p_cur_data, he_bus_raw_data_t *p_data)
+uint32_t convert_buffer_to_raw_data(uint8_t *p_cur_data, he_bus_raw_data_t *p_data, uint32_t remaining)
 {
+    he_bus_core_info_print("%s:%d bharathi entry\r\n",__func__, __LINE__);
+    wifi_util_dbg_print(WIFI_BUS, "%s:%d bharathi entry\r\n",__func__, __LINE__);
     if (p_cur_data == NULL || p_data == NULL) {
         he_bus_core_error_print("%s:%d Invalid input param\r\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_BUS, "%s:%d bharathi entry:Invalid input param\r\n", __func__, __LINE__);
+        he_bus_core_info_print("%s:%d bharathiexit: invalid input, return=0\r\n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_BUS, "%s:%d bharathi exit: invalid input, return=0\r\n", __func__, __LINE__);
         return 0;
     }
     uint32_t l_data_len = 0;
 
+    if (remaining < sizeof(p_data->data_type) + sizeof(p_data->raw_data_len)) {
+        he_bus_core_error_print("%s:%d Insufficient data\r\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_BUS, "%s:%d bharathi entry:Insufficient data\r\n", __func__, __LINE__);
+        he_bus_core_info_print("%s:%d bharathiexit: insufficient data, return=0\r\n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_BUS, "%s:%d bharathi exit: insufficient data, return=0\r\n", __func__, __LINE__);
+        return 0;
+    }
+
     memcpy(&p_data->data_type, p_cur_data, sizeof(p_data->data_type));
     p_cur_data += sizeof(p_data->data_type);
     l_data_len += sizeof(p_data->data_type);
+    remaining -= sizeof(p_data->data_type);
 
     memcpy(&p_data->raw_data_len, p_cur_data, sizeof(p_data->raw_data_len));
     p_cur_data += sizeof(p_data->raw_data_len);
     l_data_len += sizeof(p_data->raw_data_len);
+    remaining -= sizeof(p_data->raw_data_len);
 
     if (p_data->data_type == he_bus_data_type_boolean) {
         memcpy(&p_data->raw_data.b, p_cur_data, sizeof(p_data->raw_data.b));
@@ -177,12 +192,22 @@ uint32_t convert_buffer_to_raw_data(uint8_t *p_cur_data, he_bus_raw_data_t *p_da
         l_data_len += sizeof(p_data->raw_data.f64);
     } else if (p_data->raw_data_len != 0) {
         p_data->raw_data.bytes = he_bus_calloc(1, p_data->raw_data_len);
+        if (p_data->raw_data.bytes == NULL) {
+            he_bus_core_error_print("%s:%d raw data allocation failed len:%u\r\n",
+                __func__, __LINE__, p_data->raw_data_len);
+            he_bus_core_info_print("%s:%d exit: allocation failed, return=0\r\n", __func__, __LINE__);
+            wifi_util_dbg_print(WIFI_BUS, "%s:%d exit: allocation failed, return=0\r\n",
+                __func__, __LINE__);
+            return 0;
+        }
 
         memcpy(p_data->raw_data.bytes, p_cur_data, p_data->raw_data_len);
         p_cur_data += p_data->raw_data_len;
         l_data_len += p_data->raw_data_len;
     }
 
+    he_bus_core_info_print("%s:%d bharathi exit\r\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_BUS, "%s:%d bharathi exit:\r\n", __func__, __LINE__);
     return l_data_len;
 }
 
@@ -222,22 +247,50 @@ uint32_t convert_he_bus_data_object_to_buffer(uint8_t *tmp, he_bus_data_object_t
     return obj_data_len;
 }
 
-uint32_t convert_buffer_to_bus_data_object(he_bus_data_object_t *p_obj_data, uint8_t *tmp)
+uint32_t convert_buffer_to_bus_data_object(he_bus_data_object_t *p_obj_data, uint8_t *tmp, uint32_t remaining)
 {
     if (tmp == NULL || p_obj_data == NULL) {
         he_bus_core_error_print("%s:%d Invalid input param\r\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_BUS, "%s:%d bharathi entry Invalid input param\r\n", __func__, __LINE__);
         return 0;
     }
+
+    he_bus_core_info_print("%s:%d bharathi decode bus data object\r\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_BUS, "%s:%d bharathi decode bus data object\r\n", __func__, __LINE__);
+
     uint32_t obj_data_len = 0;
     uint32_t raw_data_len;
+
+    if (remaining < sizeof(p_obj_data->name_len)) {
+        he_bus_core_error_print("%s:%d  bharathi Insufficient data while decoding name_len\r\n",__func__, __LINE__);
+        wifi_util_error_print(WIFI_BUS, "%s:%d bharathi Insufficient data while decoding name_len\r\n", __func__, __LINE__);
+        return 0;
+    }
 
     memcpy(&p_obj_data->name_len, tmp, sizeof(p_obj_data->name_len));
     tmp += sizeof(p_obj_data->name_len);
     obj_data_len += sizeof(p_obj_data->name_len);
+    remaining -= sizeof(p_obj_data->name_len);
+
+    if (p_obj_data->name_len == 0 || p_obj_data->name_len > HE_BUS_MAX_NAME_LENGTH ||
+        remaining < p_obj_data->name_len) {
+            he_bus_core_error_print("%s:%d  bharathi Insufficient data\r\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_BUS, "%s:%d bharathi Insufficient data\r\n", __func__, __LINE__);
+            return 0;
+    }
 
     strncpy(p_obj_data->name, (char *)tmp, p_obj_data->name_len);
+    p_obj_data->name[p_obj_data->name_len - 1] = '\0';
     tmp += p_obj_data->name_len;
     obj_data_len += p_obj_data->name_len;
+    remaining -= p_obj_data->name_len;
+
+    if (remaining < sizeof(p_obj_data->msg_sub_type) + sizeof(p_obj_data->is_data_set) +
+        sizeof(p_obj_data->status)) {
+        he_bus_core_error_print("%s:%d  bharathi entry\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_BUS, "%s:%d bharathi Insufficient data while decod\r\n",__func__, __LINE__);
+        return 0;
+    }
 
     memcpy(&p_obj_data->msg_sub_type, tmp, sizeof(p_obj_data->msg_sub_type));
     tmp += sizeof(p_obj_data->msg_sub_type);
@@ -251,9 +304,18 @@ uint32_t convert_buffer_to_bus_data_object(he_bus_data_object_t *p_obj_data, uin
     tmp += sizeof(p_obj_data->status);
     obj_data_len += sizeof(p_obj_data->status);
 
-    raw_data_len = convert_buffer_to_raw_data(tmp, &p_obj_data->data);
+    raw_data_len = convert_buffer_to_raw_data(tmp, &p_obj_data->data, remaining);
+    if (raw_data_len == 0) {
+        he_bus_core_error_print("%s:%d  bharathi raw data decode \n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_BUS, "%s:%d bharathi raw data\r\n", __func__, __LINE__);
+        return 0;
+    }
+
     tmp += raw_data_len;
     obj_data_len += raw_data_len;
+
+    he_bus_core_info_print("%s:%d bharathi bus data object decode success:\n",__func__, __LINE__);
+    wifi_util_dbg_print(WIFI_BUS, "%s:%d bharathi bus data object decode success\n", __func__, __LINE__);
 
     return obj_data_len;
 }
@@ -362,19 +424,45 @@ int he_bus_all_objs_retain(he_bus_data_object_t *p_obj)
 he_bus_error_t convert_buffer_to_bus_raw_msg_data(he_bus_raw_data_msg_t *raw_data,
     he_bus_stretch_buff_t *input_data)
 {
+    he_bus_core_info_print("%s:%d bharathi entry\r\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_BUS, "%s:%d bharathi entry\r\n", __func__, __LINE__);
+
     uint8_t *tmp = input_data->buff;
     uint32_t buff_len = 0;
     uint32_t obj_len;
 
     if (input_data == NULL || raw_data == NULL) {
         he_bus_core_error_print("%s:%d Invalid input param\r\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_BUS, "%s:%d Invalid input param\r\n", __func__, __LINE__);
+        he_bus_core_info_print("%s:%d bharathi exit: invalid input, return=invalid_input\r\n",
+            __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_BUS,
+            "%s:%d bharathi exit: invalid input, return=invalid_input\r\n", __func__, __LINE__);
         return he_bus_error_invalid_input;
     } else if (tmp == NULL || input_data->buff_len == 0) {
         he_bus_core_error_print("%s:%d Raw data not found\r\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_BUS, "%s:%d Raw data not found\r\n", __func__, __LINE__);
+        he_bus_core_info_print("%s:%d bharathi exit: raw data not found, return=invalid_input\r\n",
+            __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_BUS,
+            "%s:%d bharathi exit: raw data not found, return=invalid_input\r\n", __func__, __LINE__);
+        return he_bus_error_invalid_input;
+    } else if (input_data->buff_len < sizeof(raw_data->bus_msg_identity) +
+        sizeof(raw_data->total_raw_msg_len) + sizeof(raw_data->component_name_len)) {
+        he_bus_core_error_print("%s:%d Insufficient data for raw message header\r\n", __func__,
+            __LINE__);
+        wifi_util_error_print(WIFI_BUS,
+            "%s:%d Insufficient data for raw message header\r\n", __func__, __LINE__);
+        he_bus_core_info_print("%s:%d bharathi exit: insufficient header, return=invalid_input\r\n",
+            __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_BUS,
+            "%s:%d bharathi exit: insufficient header, return=invalid_input\r\n", __func__, __LINE__);
         return he_bus_error_invalid_input;
     }
 
     he_bus_core_info_print("%s:%d recv raw data len:%d\r\n", __func__, __LINE__,
+        input_data->buff_len);
+    wifi_util_dbg_print(WIFI_BUS, "%s:%d recv raw data len:%d\r\n", __func__, __LINE__,
         input_data->buff_len);
 
     memcpy(&raw_data->bus_msg_identity, tmp, sizeof(raw_data->bus_msg_identity));
@@ -389,7 +477,25 @@ he_bus_error_t convert_buffer_to_bus_raw_msg_data(he_bus_raw_data_msg_t *raw_dat
     tmp += sizeof(raw_data->component_name_len);
     buff_len += sizeof(raw_data->component_name_len);
 
+    if (raw_data->component_name_len == 0 ||
+        raw_data->component_name_len > HE_BUS_MAX_NAME_LENGTH ||
+        input_data->buff_len < buff_len ||
+        input_data->buff_len - buff_len < raw_data->component_name_len +
+        sizeof(raw_data->msg_type) + sizeof(raw_data->num_of_obj)) {
+        he_bus_core_error_print("%s:%d invalid component name length:%u\r\n", __func__, __LINE__,
+            raw_data->component_name_len);
+        wifi_util_error_print(WIFI_BUS, "%s:%d invalid component name length:%u\r\n", __func__,
+            __LINE__, raw_data->component_name_len);
+        he_bus_core_info_print("%s:%d bharathi exit: invalid comp length, return=invalid_input\r\n",
+            __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_BUS,
+            "%s:%d bharathi exit: invalid comp length, return=invalid_input\r\n", __func__,
+            __LINE__);
+        return he_bus_error_invalid_input;
+    }
+
     strncpy(raw_data->component_name, (char *)tmp, raw_data->component_name_len);
+    raw_data->component_name[raw_data->component_name_len - 1] = '\0';
     tmp += raw_data->component_name_len;
     buff_len += raw_data->component_name_len;
 
@@ -404,8 +510,23 @@ he_bus_error_t convert_buffer_to_bus_raw_msg_data(he_bus_raw_data_msg_t *raw_dat
     raw_data->data_obj.next_data = NULL;
 
     if (raw_data->num_of_obj != 0) {
+        obj_len = convert_buffer_to_bus_data_object(&raw_data->data_obj, tmp,
+            input_data->buff_len - buff_len);
 
-        obj_len = convert_buffer_to_bus_data_object(&raw_data->data_obj, tmp);
+        if (obj_len == 0) {
+            he_bus_core_error_print("%s:%d Insufficient data while decoding first object\r\n",
+                __func__, __LINE__);
+            wifi_util_error_print(WIFI_BUS,
+                "%s:%d Insufficient data while decoding first object\r\n", __func__, __LINE__);
+            raw_data->num_of_obj = 0;
+            he_bus_core_info_print("%s:%d bharathi exit: first object decode failed, return=invalid_input\r\n",
+                __func__, __LINE__);
+            wifi_util_dbg_print(WIFI_BUS,
+                "%s:%d bharathi exit: first object decode failed, return=invalid_input\r\n",
+                __func__, __LINE__);
+            return he_bus_error_invalid_input;
+        }
+
         he_bus_data_object_retain(&raw_data->data_obj);
         tmp += obj_len;
         buff_len += obj_len;
@@ -418,7 +539,22 @@ he_bus_error_t convert_buffer_to_bus_raw_msg_data(he_bus_raw_data_msg_t *raw_dat
             HE_BUS_CHECK_NULL_WITH_RC(l_obj, he_bus_error_out_of_resources);
             l_obj->next_data = NULL;
 
-            obj_len = convert_buffer_to_bus_data_object(l_obj, tmp);
+            obj_len = convert_buffer_to_bus_data_object(l_obj, tmp, input_data->buff_len - buff_len);
+
+            if (obj_len == 0) {
+                he_bus_core_error_print("%s:%d bharathi Insufficient data while decoding remaining objects\r\n",
+                    __func__, __LINE__);
+                wifi_util_error_print(WIFI_BUS,
+                    "%s:%d bharathi Insufficient data while decoding remaining objects\r\n", __func__, __LINE__);
+                he_bus_free(l_obj);
+                he_bus_core_info_print("%s:%d bharathi exit: remaining object decode failed, return=invalid_input\r\n",
+                    __func__, __LINE__);
+                wifi_util_dbg_print(WIFI_BUS,
+                    "%s:%d bharathi exit: remaining object decode failed, return=invalid_input\r\n",
+                    __func__, __LINE__);
+                return he_bus_error_invalid_input;
+            }
+
             tmp += obj_len;
             buff_len += obj_len;
 
@@ -432,10 +568,16 @@ he_bus_error_t convert_buffer_to_bus_raw_msg_data(he_bus_raw_data_msg_t *raw_dat
         }
     }
 
-    he_bus_core_info_print("%s:%d payload data recv from:%s :%d\r\n", __func__, __LINE__,
+    he_bus_core_info_print("%s:%d bharathi exit:payload data recv from:%s :%d\r\n", __func__, __LINE__,
         raw_data->component_name, raw_data->num_of_obj);
-    he_bus_core_info_print("%s:%d recv buff data len:%d, actual len:%d\r\n", __func__, __LINE__,
+    wifi_util_dbg_print(WIFI_BUS, "%s:%d bharathi payload data recv from:%s :%d\r\n", __func__, __LINE__,
+        raw_data->component_name, raw_data->num_of_obj);
+    he_bus_core_info_print("%s:%d bharathi exit:recv buff data len:%d, actual len:%d\r\n", __func__, __LINE__,
         buff_len, raw_data->total_raw_msg_len);
+    wifi_util_dbg_print(WIFI_BUS, "%s:%d bharathi exit:recv buff data len:%d, actual len:%d\r\n", __func__,
+        __LINE__, buff_len, raw_data->total_raw_msg_len);
+    he_bus_core_info_print("%s:%d bharathi exit\r\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_BUS, "%s:%d bharathi exit\r\n", __func__, __LINE__);
 
     return he_bus_error_success;
 }
