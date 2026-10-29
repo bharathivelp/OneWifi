@@ -898,8 +898,13 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, const char 
 
     if ((access(filename_dbg_enable, R_OK)) == 0) {
         snprintf(filename, sizeof(filename), "/tmp/%s", module_filename);
-        fpg = fopen(filename, "a+");
+        int fd = open(filename, O_WRONLY | O_CREAT | O_APPEND | O_NOFOLLOW, 0600);
+        if (fd < 0) {
+            return;
+        }
+        fpg = fdopen(fd, "a");
         if (fpg == NULL) {
+            close(fd);
             return;
         }
     } else {
