@@ -768,6 +768,8 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, const char 
     char module_filename[32];
     char filename[100];
 
+    fprintf(stderr, "wifi_util_print: entry level=%d module=%d\n", level, module);
+
     switch (module) {
     case WIFI_DB: {
         snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDbDbg");
@@ -893,13 +895,21 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, const char 
         break;
     }
     default:
+        fprintf(stderr, "wifi_util_print: exit level=%d module=%d (invalid module)\n", level, module);
         return;
     }
 
     if ((access(filename_dbg_enable, R_OK)) == 0) {
         snprintf(filename, sizeof(filename), "/tmp/%s", module_filename);
-        fpg = fopen(filename, "a+");
+        int fd = open(filename, O_WRONLY | O_CREAT | O_APPEND | O_NOFOLLOW, 0600);
+        if (fd < 0) {
+            fprintf(stderr, "wifi_util_print: exit level=%d module=%d (open failed, fd=%d)\n", level, module, fd);
+            return;
+        }
+        fpg = fdopen(fd, "a");
         if (fpg == NULL) {
+            close(fd);
+            fprintf(stderr, "wifi_util_print: exit level=%d module=%d (fdopen failed)\n", level, module);
             return;
         }
     } else {
@@ -913,11 +923,13 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, const char 
 #endif
             fpg = fopen(filename, "a+");
             if (fpg == NULL) {
+                fprintf(stderr, "wifi_util_print: exit level=%d module=%d (fopen failed for %s)\n", level, module, filename);
                 return;
             }
             break;
         case WIFI_LOG_LVL_DEBUG:
         default:
+            fprintf(stderr, "wifi_util_print: exit level=%d module=%d (debug log disabled)\n", level, module);
             return;
         }
     }
@@ -951,6 +963,7 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, const char 
 
     fflush(fpg);
     fclose(fpg);
+    fprintf(stderr, "wifi_util_print: exit level=%d module=%d\n", level, module);
 }
 
 int WiFi_IsValidMacAddr(const char* mac)

@@ -187,6 +187,7 @@ static csi_session_t* csi_get_session(bool create, int csi_session_number) {
     int count = 0, i = 0;
     queue_t *csi_queue = get_csi_session_queue();
     char fifo_path[64] = {0};
+    wifi_util_dbg_print(WIFI_APPS, "%s: %d bharathi enter \n",__func__, __LINE__);
 
     count = queue_count(csi_queue);
     for (i = 0; i<count; i++) {
@@ -218,13 +219,14 @@ static csi_session_t* csi_get_session(bool create, int csi_session_number) {
 
     //Create FIFO fr the session.
     snprintf(fifo_path, sizeof(fifo_path), "/tmp/csi_motion_pipe%d", csi_session_number);
-    if ((mkfifo(fifo_path, 0777) != 0) && (errno != EEXIST)) {
+    if ((mkfifo(fifo_path, 0600) != 0) && (errno != EEXIST)) {
         wifi_util_error_print(WIFI_APPS, "%s:%d Unable to create FIFO path\n", __func__, __LINE__);
         free(csi);
         return NULL;
     }
 
     queue_push(csi_queue, csi);
+    wifi_util_dbg_print(WIFI_APPS, "%s: %d bharathi exit \n",__func__, __LINE__);
     return csi;
 }
 
@@ -651,6 +653,20 @@ queue_t *update_csi_local_queue_from_motion_queue()
     csi_data_t *tmp_csi_data;
     unsigned int itr;
     queue_t *local_csi_queue;
+    wifi_util_dbg_print(WIFI_APPS, "%s %d: bharathi enter\n", __FUNCTION__,__LINE__);
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s %d: ctrl is NULL\n", __FUNCTION__, __LINE__);
+        return NULL;
+    }
+
+    wifi_app_t *wifi_app = get_app_by_inst(&ctrl->apps_mgr, wifi_app_inst_motion);
+    
+    if (wifi_app == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s %d: motion app is NULL\n", __FUNCTION__, __LINE__);
+        return NULL;
+    }
 
     queue_t *csi_queue = get_csi_data_queue();
 
@@ -667,11 +683,13 @@ queue_t *update_csi_local_queue_from_motion_queue()
 
 
     //update the local queue from app csi queue
+    pthread_mutex_lock(&wifi_app->data.u.motion.lock);
     for (itr=0; itr<queue_count(csi_queue); itr++) {
         tmp_csi_data = (csi_data_t *)queue_peek(csi_queue, itr);
         if (tmp_csi_data != NULL) {
             csi_data_t *to_queue = (csi_data_t *)malloc(sizeof(csi_data_t));
             if (to_queue == NULL) {
+                pthread_mutex_unlock(&wifi_app->data.u.motion.lock);
                 wifi_util_error_print(WIFI_APPS, "%s %d: malloc failed for itr : %d\n", __FUNCTION__, __LINE__, itr);
                 queue_destroy(local_csi_queue);
                 return NULL;
@@ -680,8 +698,9 @@ queue_t *update_csi_local_queue_from_motion_queue()
             queue_push(local_csi_queue, to_queue);
         }
     }
+    pthread_mutex_unlock(&wifi_app->data.u.motion.lock);
 
-
+    wifi_util_dbg_print(WIFI_APPS, "%s %d: bharathi exit\n", __FUNCTION__,__LINE__);
     return local_csi_queue;
 }
 

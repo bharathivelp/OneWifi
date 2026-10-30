@@ -2847,7 +2847,7 @@ extern const char* get_passpoint_json_by_vap_name(const char* vap_name);
 extern const char* get_anqp_json_by_vap_name(const char* vap_name);
 extern void reset_passpoint_json(const char* vap_name);
 extern void reset_anqp_json(const char* vap_name);
-extern int get_wifi_last_reboot_reason_psm_value(char *last_reboot_reason);
+extern int get_wifi_last_reboot_reason_psm_value(char *last_reboot_reason, size_t len);
 
 void wifidb_reset_macfilter_hashmap()
 {
@@ -5744,6 +5744,7 @@ void *start_wifidb_func(void *arg)
     FILE *fp = NULL;
     int i = 0;
     //bool isOvsSchemaCreate = false;
+    wifi_util_dbg_print(WIFI_DB, "%s:%d: bharathi enter start_wifidb_func \n", __func__, __LINE__);
     wifi_util_info_print(WIFI_DB, "start_wifidb_func \n");
     wifi_mgr_t *g_wifidb;
     char last_reboot_reason[32];
@@ -5759,7 +5760,7 @@ void *start_wifidb_func(void *arg)
     if(wifiDbDir){
         closedir(wifiDbDir);
     }else if(ENOENT == errno){
-        if(0 != mkdir(WIFIDB_DIR, 0777)){
+        if(0 != mkdir(WIFIDB_DIR, 0700)){
             wifi_util_info_print(WIFI_DB,"Failed to Create WIFIDB directory.\n");
             return NULL;
         }
@@ -5788,10 +5789,11 @@ void *start_wifidb_func(void *arg)
                 get_bus_descriptor()->bus_data_free_fn(&data);
                 return NULL;
             }
-            strncpy(last_reboot_reason, (char *)data.raw_data.bytes, data.raw_data_len);
+            strncpy(last_reboot_reason, (char *)data.raw_data.bytes, sizeof(last_reboot_reason) - 1);
+            last_reboot_reason[sizeof(last_reboot_reason) - 1] = '\0';
             get_bus_descriptor()->bus_data_free_fn(&data);
         } else {
-            get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
+            get_wifi_last_reboot_reason_psm_value(last_reboot_reason, sizeof(last_reboot_reason));
         }
         wifi_util_info_print(WIFI_DB, "%s:%d last_reboot_reason:%s \n", __func__, __LINE__,
             last_reboot_reason);
@@ -5846,6 +5848,7 @@ void *start_wifidb_func(void *arg)
             system(cmd);
         }
     }
+    wifi_util_info_print(WIFI_DB, "%s:%d: bharathi exit Starting wifidb-server\n", __func__, __LINE__);
 
     sprintf(cmd, "%s/wifidb-server %s --remote=punix:%s/wifidb.sock %s --unixctl=%s/wifi.ctl --log-file=/dev/null --detach", WIFIDB_RUN_DIR, db_file, WIFIDB_RUN_DIR, (debug_option == true)?"--verbose=dbg":"", WIFIDB_RUN_DIR);
 
@@ -10078,21 +10081,28 @@ int get_wifi_db_psm_enable_status(bool *wifi_psm_db_enabled)
     return RETURN_OK;
 }
 
-int get_wifi_last_reboot_reason_psm_value(char *last_reboot_reason)
+int get_wifi_last_reboot_reason_psm_value(char *last_reboot_reason, size_t len)
 {
     char *str = NULL;
     char strValue[256] = {0};
     wifi_ccsp_desc_t *p_ccsp_desc = &get_wificcsp_obj()->desc;
+    wifi_util_dbg_print(WIFI_MGR,"%s:%d bharathi enter \r\n", __func__, __LINE__);
+
+    if (last_reboot_reason == NULL || len == 0) {
+        wifi_util_error_print(WIFI_MGR,"%s:%d Invalid input parameters\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
 
     memset(strValue, 0, sizeof(strValue));
     str = p_ccsp_desc->psm_get_value_fn(LAST_REBOOT_REASON_NAMESPACE, strValue, sizeof(strValue));
     if (str != NULL) {
-        strcpy(last_reboot_reason, str);
+        snprintf(last_reboot_reason, len, "%s", str);
         wifi_util_dbg_print(WIFI_MGR,"str is %s and last_reboot_reason is %s\n", str, last_reboot_reason);
     } else {
         wifi_util_error_print(WIFI_MGR,"%s:%d last_reboot_reason:%s \r\n", __func__, __LINE__, last_reboot_reason);
         return RETURN_ERR;
     }
+    wifi_util_dbg_print(WIFI_MGR,"%s:%d bharathi exit \r\n", __func__, __LINE__);
 
     return RETURN_OK;
 }
@@ -10100,6 +10110,7 @@ int get_wifi_last_reboot_reason_psm_value(char *last_reboot_reason)
 int get_all_param_from_psm_and_set_into_db(void)
 {
     char inactive_firmware[64] = { 0 };
+    wifi_util_dbg_print(WIFI_MGR,"%s:%d bharathi enter \r\n", __func__, __LINE__);
     wifi_util_info_print(WIFI_MGR, "%s \n", __func__);
     /*      check for psm-db(Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WiFi-PSM-DB.Enable) and
     **      last reboot reason(Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason)
@@ -10148,7 +10159,7 @@ int get_all_param_from_psm_and_set_into_db(void)
             }
         } else {
             get_wifi_db_psm_enable_status(&wifi_psm_db_enabled);
-            get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
+            get_wifi_last_reboot_reason_psm_value(last_reboot_reason, sizeof(last_reboot_reason));
         }
 
         wifi_util_info_print(WIFI_MGR, "%s psm:%d last_reboot_reason:%s \n", __func__,
@@ -10212,6 +10223,7 @@ int get_all_param_from_psm_and_set_into_db(void)
     }
 
     get_wifidb_obj()->desc.init_data_fn();
+    wifi_util_dbg_print(WIFI_MGR,"%s:%d bharathi exit \r\n", __func__, __LINE__);
 
     // Set Wifi Global Parameters
     init_wifi_global_config();
