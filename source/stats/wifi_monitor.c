@@ -5406,12 +5406,13 @@ long get_sys_uptime()
  unsigned int get_upload_period  (int oldInterval)
  {
      FILE *fp;
-     char buff[64];
+     char buff[64] = {0};
      char *ptr;
      int logInterval=oldInterval;
      struct timeval polling_time = {0};
      time_t  time_gap = 0;
      gettimeofday(&polling_time, NULL);
+     wifi_util_dbg_print(WIFI_MON, "%s:%d: bharathi entry \n", __func__, __LINE__);
 
      if ((fp = fopen("/tmp/upload", "r")) == NULL) {
      /* Minimum LOG Interval we can set is 60 sec, just verify every 1 min any change in the LogInterval
@@ -5431,7 +5432,14 @@ long get_sys_uptime()
      }
      fclose(fp);
 
-     return atoi(buff);
+    /* /tmp is world-writable: accept only values within the same limits as the WiFi DB value */
+    logInterval = atoi(buff);
+    if ((logInterval < Min_LogInterval) || (logInterval > Max_LogInterval)) {
+        return readLogInterval();
+    }
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: bharathi exit LogInterval \n", __func__, __LINE__);
+    return logInterval;
+
 }
 
 wifi_monitor_t *get_wifi_monitor()
